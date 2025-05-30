@@ -1,0 +1,9 @@
+Data: all_data_group
+Models:
+Asynchrony_random.lmer: Group_Async_ON ~ 1 + (1 | Song) + (1 | Artist)
+Asynchrony.lmer: Group_Async_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Song) + (1 | Artist) + (1 | N_Events)
+                       npar    AIC    BIC  logLik deviance  Chisq Df Pr(>Chisq)   
+Asynchrony_random.lmer    4 283.19 297.31 -137.59   275.19                        
+Asynchrony.lmer           8 277.02 305.26 -130.51   261.02 14.165  4   0.006787 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
