@@ -7,8 +7,8 @@ All edits of code took place before deadline of exam the 2nd of June 2025.
 This repository contains all code and data related to the thesis paper: *The Art of Thinking in Time: A Cognitive Modeling Approach to Musical Synchrony in Jazz Trios*
 
 ### Usage
-The repository contains: 
-A folder including the data in all forms, from original, raw data to filtered, concatenated files, as well as descriptive visualizations
+#### The repository contains: 
+##### A folder including the data in all forms, from original, raw data to filtered, concatenated files, as well as descriptive visualizations
 An analysis folder, which contains the following
 -
 -
