@@ -1,0 +1,72 @@
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: LLE_ON ~ Model_Version * IOI_Entropy_z * Pair_Label * Tempo_z +      (1 | Artist/Song) + (1 | N_Events)
+   Data: all_data_lle
+Control: lmerControl(optimizer = "bobyqa")
+
+     AIC      BIC   logLik deviance df.resid 
+  7062.7   7373.2  -3479.4   6958.7     2842 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-4.4068 -0.4364  0.0167  0.4560  5.0049 
+
+Random effects:
+ Groups      Name        Variance Std.Dev.
+ N_Events    (Intercept) 0.344164 0.58665 
+ Song:Artist (Intercept) 0.289947 0.53847 
+ Artist      (Intercept) 0.008565 0.09255 
+ Residual                0.470359 0.68583 
+Number of obs: 2894, groups:  N_Events, 293; Song:Artist, 255; Artist, 101
+
+Fixed effects:
+                                                            Estimate Std. Error         df t value Pr(>|t|)   
+(Intercept)                                               -7.856e-02  7.611e-02  2.787e+02  -1.032  0.30286   
+Model_VersionJoint_LLE                                     4.749e-02  7.121e-02  2.293e+03   0.667  0.50489   
+IOI_Entropy_z                                             -7.879e-03  7.540e-02  2.763e+03  -0.105  0.91678   
+Pair_Label13                                               3.672e-02  8.135e-02  2.718e+03   0.451  0.65173   
+Pair_Label21                                               3.232e-02  9.314e-02  2.698e+03   0.347  0.72858   
+Pair_Label23                                              -9.182e-02  8.603e-02  2.735e+03  -1.067  0.28591   
+Pair_Label31                                               1.445e-01  9.343e-02  2.727e+03   1.547  0.12210   
+Pair_Label32                                               8.045e-02  7.918e-02  2.733e+03   1.016  0.30972   
+Tempo_z                                                   -1.067e-01  7.111e-02  1.399e+03  -1.501  0.13359   
+Model_VersionJoint_LLE:IOI_Entropy_z                       1.006e-02  9.176e-02  2.293e+03   0.110  0.91270   
+Model_VersionJoint_LLE:Pair_Label13                       -7.077e-02  1.050e-01  2.293e+03  -0.674  0.50035   
+Model_VersionJoint_LLE:Pair_Label21                       -6.724e-02  1.182e-01  2.293e+03  -0.569  0.56957   
+Model_VersionJoint_LLE:Pair_Label23                        7.109e-02  1.099e-01  2.293e+03   0.647  0.51779   
+Model_VersionJoint_LLE:Pair_Label31                       -1.442e-01  1.176e-01  2.293e+03  -1.227  0.21995   
+Model_VersionJoint_LLE:Pair_Label32                       -9.059e-02  1.015e-01  2.293e+03  -0.893  0.37204   
+IOI_Entropy_z:Pair_Label13                                -3.666e-02  9.314e-02  2.616e+03  -0.394  0.69393   
+IOI_Entropy_z:Pair_Label21                                 1.925e-02  8.829e-02  2.365e+03   0.218  0.82745   
+IOI_Entropy_z:Pair_Label23                                 7.927e-02  9.636e-02  2.614e+03   0.823  0.41076   
+IOI_Entropy_z:Pair_Label31                                -6.790e-02  9.195e-02  2.634e+03  -0.738  0.46029   
+IOI_Entropy_z:Pair_Label32                                 4.655e-03  9.887e-02  2.621e+03   0.047  0.96245   
+Model_VersionJoint_LLE:Tempo_z                             5.936e-02  7.674e-02  2.293e+03   0.773  0.43935   
+IOI_Entropy_z:Tempo_z                                     -2.599e-02  7.999e-02  2.777e+03  -0.325  0.74529   
+Pair_Label13:Tempo_z                                       1.013e-01  8.881e-02  2.683e+03   1.141  0.25410   
+Pair_Label21:Tempo_z                                       2.672e-02  8.711e-02  2.689e+03   0.307  0.75907   
+Pair_Label23:Tempo_z                                      -2.113e-01  9.297e-02  2.692e+03  -2.272  0.02314 * 
+Pair_Label31:Tempo_z                                      -3.416e-02  8.861e-02  2.745e+03  -0.385  0.69992   
+Pair_Label32:Tempo_z                                      -2.266e-01  8.413e-02  2.684e+03  -2.693  0.00712 **
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label13         -1.240e-02  1.224e-01  2.293e+03  -0.101  0.91933   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label21         -3.049e-02  1.216e-01  2.293e+03  -0.251  0.80198   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label23         -3.240e-02  1.263e-01  2.293e+03  -0.257  0.79755   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label31         -1.896e-02  1.205e-01  2.293e+03  -0.157  0.87495   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label32         -1.337e-02  1.301e-01  2.293e+03  -0.103  0.91818   
+Model_VersionJoint_LLE:IOI_Entropy_z:Tempo_z               8.591e-02  9.883e-02  2.293e+03   0.869  0.38479   
+Model_VersionJoint_LLE:Pair_Label13:Tempo_z               -1.961e-01  1.153e-01  2.293e+03  -1.701  0.08908 . 
+Model_VersionJoint_LLE:Pair_Label21:Tempo_z               -3.405e-02  1.126e-01  2.293e+03  -0.303  0.76228   
+Model_VersionJoint_LLE:Pair_Label23:Tempo_z                3.203e-02  1.197e-01  2.293e+03   0.268  0.78909   
+Model_VersionJoint_LLE:Pair_Label31:Tempo_z                1.856e-02  1.122e-01  2.293e+03   0.165  0.86863   
+Model_VersionJoint_LLE:Pair_Label32:Tempo_z                1.144e-01  1.091e-01  2.293e+03   1.049  0.29449   
+IOI_Entropy_z:Pair_Label13:Tempo_z                         1.134e-01  1.023e-01  2.625e+03   1.108  0.26785   
+IOI_Entropy_z:Pair_Label21:Tempo_z                        -7.896e-03  9.305e-02  2.404e+03  -0.085  0.93238   
+IOI_Entropy_z:Pair_Label23:Tempo_z                        -1.044e-01  1.047e-01  2.622e+03  -0.997  0.31867   
+IOI_Entropy_z:Pair_Label31:Tempo_z                         5.874e-02  9.740e-02  2.664e+03   0.603  0.54652   
+IOI_Entropy_z:Pair_Label32:Tempo_z                        -1.771e-02  1.060e-01  2.600e+03  -0.167  0.86729   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label13:Tempo_z -1.757e-01  1.335e-01  2.293e+03  -1.316  0.18839   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label21:Tempo_z -1.203e-01  1.265e-01  2.293e+03  -0.951  0.34186   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label23:Tempo_z  5.908e-02  1.366e-01  2.293e+03   0.433  0.66535   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label31:Tempo_z -1.405e-01  1.260e-01  2.293e+03  -1.115  0.26479   
+Model_VersionJoint_LLE:IOI_Entropy_z:Pair_Label32:Tempo_z -4.799e-02  1.405e-01  2.293e+03  -0.342  0.73275   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

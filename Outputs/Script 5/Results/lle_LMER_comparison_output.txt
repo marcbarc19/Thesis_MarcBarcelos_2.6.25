@@ -1,0 +1,9 @@
+Data: all_data_lle
+Models:
+lle_adam_reduced.lmer: LLE_ON ~ 1 + +(1 | Artist/Song) + (1 | N_Events)
+lle_adam.lmer: LLE_ON ~ Model_Version * IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events)
+                      npar    AIC    BIC  logLik deviance  Chisq Df Pr(>Chisq)  
+lle_adam_reduced.lmer    5 7036.2 7066.0 -3513.1   7026.2                       
+lle_adam.lmer           52 7062.7 7373.2 -3479.4   6958.7 67.456 47    0.02678 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
