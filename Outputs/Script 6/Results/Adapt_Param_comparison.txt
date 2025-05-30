@@ -1,0 +1,9 @@
+Data: all_data
+Models:
+Adapt_random.lmer: DV_Async_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events)
+Adapt.lmer: DV_Async_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z * (Adapt_Alpha_ON + Adapt_Beta_ON + Adapt_Tn_ON + Adapt_Mn_ON) + (1 | Artist/Song) + (1 | N_Events)
+                  npar    AIC    BIC   logLik deviance  Chisq  Df Pr(>Chisq)    
+Adapt_random.lmer    5 3229.5 3255.7 -1609.74   3219.5                          
+Adapt.lmer         124 1703.2 2353.0  -727.58   1455.2 1764.3 119  < 2.2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

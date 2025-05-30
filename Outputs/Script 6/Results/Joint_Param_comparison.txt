@@ -1,0 +1,9 @@
+Data: all_data
+Models:
+Joint_random.lmer: DV_Async_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events)
+Joint.lmer: DV_Async_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z * (Joint_Beta_ON + Joint_Delta_ON + Joint_Gamma_ON + Joint_Tn_ON) + (1 | Artist/Song) + (1 | N_Events)
+                  npar    AIC    BIC   logLik deviance  Chisq  Df Pr(>Chisq)    
+Joint_random.lmer    5 3229.5 3255.7 -1609.74   3219.5                          
+Joint.lmer         124 1596.2 2246.0  -674.08   1348.2 1871.3 119  < 2.2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

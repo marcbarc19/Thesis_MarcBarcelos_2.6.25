@@ -1,0 +1,47 @@
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: Group_Async_ON ~ IOI_Entropy_Global_z * Tempo_z * (Adapt_Alpha_ON +      Adapt_Beta_ON + Adapt_Tn_ON + Adapt_Mn_ON) + (1 | Artist) +      (1 | Song) + (1 | N_Events)
+   Data: all_data_group
+Control: lmerControl(optimizer = "bobyqa")
+
+     AIC      BIC   logLik deviance df.resid 
+   195.1    279.8    -73.6    147.1      228 
+
+Scaled residuals: 
+     Min       1Q   Median       3Q      Max 
+-2.12455 -0.58811 -0.04937  0.45978  2.63484 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ Song     (Intercept) 0.009696 0.09847 
+ N_Events (Intercept) 0.022591 0.15030 
+ Artist   (Intercept) 0.000000 0.00000 
+ Residual             0.073711 0.27150 
+Number of obs: 252, groups:  Song, 228; N_Events, 211; Artist, 101
+
+Fixed effects:
+                                              Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                                   0.904193   0.027516 226.624227  32.860  < 2e-16 ***
+IOI_Entropy_Global_z                         -0.064622   0.032412 251.793073  -1.994 0.047258 *  
+Tempo_z                                       0.022589   0.029431 233.663846   0.768 0.443544    
+Adapt_Alpha_ON                               -0.397340   0.092724 228.593477  -4.285 2.69e-05 ***
+Adapt_Beta_ON                                -0.002947   0.111130 249.052248  -0.027 0.978866    
+Adapt_Tn_ON                                   0.177174   0.039804 248.158535   4.451 1.29e-05 ***
+Adapt_Mn_ON                                  -0.114127   0.046938 246.721865  -2.431 0.015752 *  
+IOI_Entropy_Global_z:Tempo_z                  0.035129   0.037523 245.232817   0.936 0.350092    
+IOI_Entropy_Global_z:Adapt_Alpha_ON          -0.344564   0.092161 228.724477  -3.739 0.000234 ***
+IOI_Entropy_Global_z:Adapt_Beta_ON           -0.045133   0.101797 246.175311  -0.443 0.657890    
+IOI_Entropy_Global_z:Adapt_Tn_ON              0.182720   0.034355 225.881624   5.319 2.51e-07 ***
+IOI_Entropy_Global_z:Adapt_Mn_ON             -0.055210   0.049571 216.964114  -1.114 0.266617    
+Tempo_z:Adapt_Alpha_ON                        0.114895   0.112810 248.910017   1.018 0.309438    
+Tempo_z:Adapt_Beta_ON                         0.274459   0.113199 236.914292   2.425 0.016075 *  
+Tempo_z:Adapt_Tn_ON                          -0.176148   0.047306 242.468047  -3.724 0.000244 ***
+Tempo_z:Adapt_Mn_ON                          -0.012662   0.052679 249.816231  -0.240 0.810243    
+IOI_Entropy_Global_z:Tempo_z:Adapt_Alpha_ON  -0.092453   0.123229 245.600702  -0.750 0.453819    
+IOI_Entropy_Global_z:Tempo_z:Adapt_Beta_ON    0.199427   0.110236 239.960466   1.809 0.071688 .  
+IOI_Entropy_Global_z:Tempo_z:Adapt_Tn_ON      0.006526   0.044923 249.624459   0.145 0.884613    
+IOI_Entropy_Global_z:Tempo_z:Adapt_Mn_ON     -0.106493   0.062443 229.120666  -1.705 0.089464 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+optimizer (bobyqa) convergence code: 0 (OK)
+boundary (singular) fit: see help('isSingular')
+

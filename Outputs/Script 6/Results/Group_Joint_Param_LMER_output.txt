@@ -1,0 +1,44 @@
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: Group_Async_ON ~ IOI_Entropy_Global_z * Tempo_z * (Joint_Beta_ON +      Joint_Delta_ON + Joint_Gamma_ON + Joint_Tn_ON) + (1 | Artist) +      (1 | Song) + (1 | N_Events)
+   Data: all_data_group
+Control: lmerControl(optimizer = "bobyqa")
+
+     AIC      BIC   logLik deviance df.resid 
+   184.5    269.2    -68.3    136.5      228 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.1335 -0.4696 -0.0699  0.4179  3.3783 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ Song     (Intercept) 0.016788 0.12957 
+ N_Events (Intercept) 0.015281 0.12361 
+ Artist   (Intercept) 0.008621 0.09285 
+ Residual             0.062338 0.24968 
+Number of obs: 252, groups:  Song, 228; N_Events, 211; Artist, 101
+
+Fixed effects:
+                                              Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                                   0.867848   0.029058 114.776995  29.866  < 2e-16 ***
+IOI_Entropy_Global_z                         -0.136648   0.030248 243.583996  -4.518 9.76e-06 ***
+Tempo_z                                       0.018501   0.028959 246.016941   0.639  0.52350    
+Joint_Beta_ON                                -0.194114   0.072524 245.210769  -2.677  0.00794 ** 
+Joint_Delta_ON                               -0.102492   0.043640 243.433866  -2.349  0.01965 *  
+Joint_Gamma_ON                               -0.270289   0.062506 239.639225  -4.324 2.25e-05 ***
+Joint_Tn_ON                                   0.275055   0.041807 247.586787   6.579 2.80e-10 ***
+IOI_Entropy_Global_z:Tempo_z                  0.074510   0.035493 246.717072   2.099  0.03681 *  
+IOI_Entropy_Global_z:Joint_Beta_ON           -0.069797   0.064241 249.458062  -1.086  0.27831    
+IOI_Entropy_Global_z:Joint_Delta_ON          -0.032230   0.047419 239.096465  -0.680  0.49736    
+IOI_Entropy_Global_z:Joint_Gamma_ON          -0.020881   0.063459 238.021010  -0.329  0.74241    
+IOI_Entropy_Global_z:Joint_Tn_ON              0.172469   0.037269 243.060047   4.628 6.02e-06 ***
+Tempo_z:Joint_Beta_ON                         0.206476   0.073060 248.109035   2.826  0.00509 ** 
+Tempo_z:Joint_Delta_ON                       -0.064035   0.043488 230.496614  -1.472  0.14225    
+Tempo_z:Joint_Gamma_ON                       -0.083026   0.075997 238.110658  -1.092  0.27573    
+Tempo_z:Joint_Tn_ON                          -0.087409   0.047290 240.007910  -1.848  0.06578 .  
+IOI_Entropy_Global_z:Tempo_z:Joint_Beta_ON    0.119927   0.071567 241.187939   1.676  0.09508 .  
+IOI_Entropy_Global_z:Tempo_z:Joint_Delta_ON  -0.005387   0.042186 241.141118  -0.128  0.89850    
+IOI_Entropy_Global_z:Tempo_z:Joint_Gamma_ON  -0.101428   0.080043 233.577102  -1.267  0.20635    
+IOI_Entropy_Global_z:Tempo_z:Joint_Tn_ON      0.073572   0.046582 240.880879   1.579  0.11556    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
