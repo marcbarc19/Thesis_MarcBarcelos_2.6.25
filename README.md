@@ -34,6 +34,7 @@ This repository contains all data and code associated with the thesis:
   - **`/Script #/`** for all 6 R scripts used in this study, containing these folders in all of them:
     - **`/Script #/Plots/`** includes all of the visualizations produced within a specific R  script
     - **`/Script #/Results/`** includes all of the results from the statistical analyses performed within a specific R  script
+    - **`Modeling Group Synchrony in Naturalistic Jazz Trios FINAL.docx`** is the final written output of the thesis
 ---
 
 Feel free to reach out for questions or replication assistance.
