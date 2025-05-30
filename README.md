@@ -8,10 +8,10 @@ This repository contains all code and data related to the thesis paper: *The Art
 
 ### Usage
 The repository contains: 
-- A folder including the data in all forms, from original, raw data to filtered, concatenated files, as well as descriptive visualizations
-- An analysis folder, which contains the following
-    -
-    -
+A folder including the data in all forms, from original, raw data to filtered, concatenated files, as well as descriptive visualizations
+An analysis folder, which contains the following
+-
+-
     -
     -
 - notes folder, that contains irrelevant preliminary notes and codes shared between authors. 
