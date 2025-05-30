@@ -8,8 +8,12 @@ This repository contains all code and data related to the thesis paper: *The Art
 
 ### Usage
 The repository contains: 
-- predictor_cleaning.ipynb, which contains the cleaning of the social and governance readiness indicators
-- git_data folder, that contains the csv files for each data modelling dataset and the cleaned readiness indicators
+- A folder including the data in all forms, from original, raw data to filtered, concatenated files, as well as descriptive visualizations
+- An analysis folder, which contains the following:
+    -
+    -
+    -
+    -
 - notes folder, that contains irrelevant preliminary notes and codes shared between authors. 
 
 The files that are relevant for the exam paper modelling aspects are: 
