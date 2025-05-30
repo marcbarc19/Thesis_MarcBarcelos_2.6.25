@@ -1,0 +1,9 @@
+Data: all_data_group
+Models:
+Adapt_Beta_random.lmer: Adapt_Beta_ON ~ 1 + (1 | Artist) + (1 | Song)
+Adapt_Beta.lmer: Adapt_Beta_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song)
+                       npar    AIC    BIC  logLik deviance Chisq Df Pr(>Chisq)    
+Adapt_Beta_random.lmer    4 75.655 89.820 -33.828   67.655                        
+Adapt_Beta.lmer           7 39.376 64.164 -12.688   25.376 42.28  3    3.5e-09 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

@@ -1,0 +1,9 @@
+Data: all_data
+Models:
+Joint_Beta_random.lmer: Joint_Beta_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events)
+Joint_Beta.lmer: Joint_Beta_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events)
+                       npar    AIC    BIC  logLik deviance  Chisq Df Pr(>Chisq)    
+Joint_Beta_random.lmer    5 3967.5 3993.7 -1978.8   3957.5                         
+Joint_Beta.lmer          28 3852.3 3999.0 -1898.1   3796.3 161.27 23  < 2.2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

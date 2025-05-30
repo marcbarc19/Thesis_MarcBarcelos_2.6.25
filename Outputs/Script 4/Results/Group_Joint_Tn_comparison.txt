@@ -1,0 +1,9 @@
+Data: all_data_group
+Models:
+Joint_Tn_random.lmer: Joint_Tn_ON ~ 1 + (1 | Artist) + (1 | Song)
+Joint_Tn.lmer: Joint_Tn_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song)
+                     npar    AIC    BIC  logLik deviance  Chisq Df Pr(>Chisq)    
+Joint_Tn_random.lmer    4 609.45 623.58 -300.73   601.45                         
+Joint_Tn.lmer           7 525.87 550.60 -255.93   511.87 89.583  3  < 2.2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

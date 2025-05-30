@@ -1,0 +1,7 @@
+Data: all_data_group
+Models:
+Joint_Gamma_random.lmer: Joint_Gamma_ON ~ 1 + (1 | Artist) + (1 | Song)
+Joint_Gamma.lmer: Joint_Gamma_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song)
+                        npar    AIC    BIC  logLik deviance  Chisq Df Pr(>Chisq)
+Joint_Gamma_random.lmer    4 186.69 200.83 -89.347   178.69                     
+Joint_Gamma.lmer           7 189.26 214.00 -87.631   175.26 3.4321  3     0.3297

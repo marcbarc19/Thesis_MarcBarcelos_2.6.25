@@ -1,0 +1,9 @@
+Data: all_data
+Models:
+Joint_Tn_random.lmer: Joint_Tn_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events)
+Joint_Tn.lmer: Joint_Tn_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events)
+                     npar    AIC    BIC  logLik deviance  Chisq Df Pr(>Chisq)    
+Joint_Tn_random.lmer    5 3389.7 3415.9 -1689.9   3379.7                         
+Joint_Tn.lmer          28 2823.0 2969.7 -1383.5   2767.0 612.73 23  < 2.2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

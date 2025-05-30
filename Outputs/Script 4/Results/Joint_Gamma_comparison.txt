@@ -1,0 +1,9 @@
+Data: all_data
+Models:
+Joint_Gamma_random.lmer: Joint_Gamma_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events)
+Joint_Gamma.lmer: Joint_Gamma_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events)
+                        npar    AIC    BIC  logLik deviance Chisq Df Pr(>Chisq)    
+Joint_Gamma_random.lmer    5 3782.3 3808.5 -1886.2   3772.3                        
+Joint_Gamma.lmer          28 3396.2 3542.9 -1670.1   3340.2 432.1 23  < 2.2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

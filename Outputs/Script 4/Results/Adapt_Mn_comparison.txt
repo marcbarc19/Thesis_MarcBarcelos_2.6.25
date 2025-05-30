@@ -1,0 +1,7 @@
+Data: all_data
+Models:
+Adapt_Mn_random.lmer: Adapt_Mn ~ 1 + (1 | Artist/Song)
+Adapt_Mn.lmer: Adapt_Mn_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events)
+                     npar      AIC      BIC  logLik deviance Chisq Df Pr(>Chisq)
+Adapt_Mn_random.lmer    4 -10363.9 -10342.8  5185.9 -10371.9                    
+Adapt_Mn.lmer          28   3629.5   3777.3 -1786.8   3573.5     0 24          1

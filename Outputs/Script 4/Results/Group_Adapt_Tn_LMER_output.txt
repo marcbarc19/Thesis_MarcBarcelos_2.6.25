@@ -1,0 +1,33 @@
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: Adapt_Tn_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) +      (1 | Song)
+   Data: all_data_group
+Control: lmerControl(optimizer = "bobyqa")
+
+     AIC      BIC   logLik deviance df.resid 
+   513.1    537.9   -249.6    499.1      248 
+
+Scaled residuals: 
+     Min       1Q   Median       3Q      Max 
+-2.36974 -0.67572 -0.09925  0.58094  3.10173 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ Song     (Intercept) 0.057612 0.24003 
+ Artist   (Intercept) 0.005889 0.07674 
+ Residual             0.352269 0.59352 
+Number of obs: 255, groups:  Song, 231; Artist, 101
+
+Fixed effects:
+                               Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                    0.037597   0.043495  29.644290   0.864   0.3943    
+IOI_Entropy_Global_z           0.392108   0.041031 211.315112   9.556   <2e-16 ***
+Tempo_z                       -0.107976   0.041888 239.862472  -2.578   0.0105 *  
+IOI_Entropy_Global_z:Tempo_z  -0.001391   0.043241 247.499680  -0.032   0.9744    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) IOI_En_G_ Temp_z
+IOI_Entr_G_ -0.031                 
+Tempo_z      0.053  0.088          
+IOI_E_G_:T_  0.120 -0.103     0.199

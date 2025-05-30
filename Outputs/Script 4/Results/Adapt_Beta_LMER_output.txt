@@ -1,0 +1,51 @@
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: Adapt_Beta_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) +      (1 | N_Events)
+   Data: all_data
+Control: lmerControl(optimizer = "bobyqa")
+
+     AIC      BIC   logLik deviance df.resid 
+  4057.3   4205.0  -2000.6   4001.3     1419 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.5539 -0.6421  0.0078  0.6704  3.3641 
+
+Random effects:
+ Groups      Name        Variance Std.Dev.
+ N_Events    (Intercept) 0.0000   0.0000  
+ Song:Artist (Intercept) 0.0000   0.0000  
+ Artist      (Intercept) 0.0000   0.0000  
+ Residual                0.9299   0.9643  
+Number of obs: 1447, groups:  N_Events, 293; Song:Artist, 255; Artist, 101
+
+Fixed effects:
+                                     Estimate Std. Error         df t value Pr(>|t|)   
+(Intercept)                           0.05646    0.07080 1447.00000   0.798  0.42527   
+IOI_Entropy_z                        -0.25712    0.09124 1447.00000  -2.818  0.00489 **
+Pair_Label13                          0.06356    0.10438 1447.00000   0.609  0.54265   
+Pair_Label21                          0.04079    0.11753 1447.00000   0.347  0.72857   
+Pair_Label23                         -0.17933    0.10926 1447.00000  -1.641  0.10095   
+Pair_Label31                         -0.09324    0.11687 1447.00000  -0.798  0.42513   
+Pair_Label32                         -0.24901    0.10088 1447.00000  -2.468  0.01368 * 
+Tempo_z                              -0.23085    0.07630 1447.00000  -3.025  0.00253 **
+IOI_Entropy_z:Pair_Label13            0.12248    0.12169 1447.00000   1.007  0.31431   
+IOI_Entropy_z:Pair_Label21            0.08788    0.12088 1447.00000   0.727  0.46732   
+IOI_Entropy_z:Pair_Label23           -0.08356    0.12558 1447.00000  -0.665  0.50592   
+IOI_Entropy_z:Pair_Label31            0.08027    0.11979 1447.00000   0.670  0.50293   
+IOI_Entropy_z:Pair_Label32            0.35834    0.12938 1447.00000   2.770  0.00568 **
+IOI_Entropy_z:Tempo_z                -0.22741    0.09826 1447.00000  -2.314  0.02078 * 
+Pair_Label13:Tempo_z                  0.01075    0.11461 1447.00000   0.094  0.92531   
+Pair_Label21:Tempo_z                  0.08352    0.11192 1447.00000   0.746  0.45565   
+Pair_Label23:Tempo_z                  0.11058    0.11902 1447.00000   0.929  0.35299   
+Pair_Label31:Tempo_z                  0.20365    0.11153 1447.00000   1.826  0.06806 . 
+Pair_Label32:Tempo_z                  0.18695    0.10849 1447.00000   1.723  0.08509 . 
+IOI_Entropy_z:Pair_Label13:Tempo_z    0.12377    0.13276 1447.00000   0.932  0.35135   
+IOI_Entropy_z:Pair_Label21:Tempo_z    0.40503    0.12582 1447.00000   3.219  0.00131 **
+IOI_Entropy_z:Pair_Label23:Tempo_z    0.16446    0.13577 1447.00000   1.211  0.22599   
+IOI_Entropy_z:Pair_Label31:Tempo_z    0.28640    0.12525 1447.00000   2.287  0.02236 * 
+IOI_Entropy_z:Pair_Label32:Tempo_z    0.27856    0.13970 1447.00000   1.994  0.04635 * 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+optimizer (bobyqa) convergence code: 0 (OK)
+boundary (singular) fit: see help('isSingular')
+

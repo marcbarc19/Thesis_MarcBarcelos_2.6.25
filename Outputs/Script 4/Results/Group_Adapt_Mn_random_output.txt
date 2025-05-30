@@ -1,0 +1,25 @@
+Linear mixed model fit by maximum likelihood . t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: Adapt_Mn_ON ~ 1 + (1 | Artist) + (1 | Song)
+   Data: all_data_group
+Control: lmerControl(optimizer = "bobyqa")
+
+     AIC      BIC   logLik deviance df.resid 
+   445.3    459.4   -218.6    437.3      251 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-1.7144 -0.6171 -0.0773  0.7053  3.8706 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ Song     (Intercept) 0.0000   0.0000  
+ Artist   (Intercept) 0.0000   0.0000  
+ Residual             0.3252   0.5703  
+Number of obs: 255, groups:  Song, 231; Artist, 101
+
+Fixed effects:
+             Estimate Std. Error        df t value Pr(>|t|)
+(Intercept)   0.02904    0.03571 255.00000   0.813    0.417
+optimizer (bobyqa) convergence code: 0 (OK)
+boundary (singular) fit: see help('isSingular')
+
