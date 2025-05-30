@@ -1,0 +1,821 @@
+---
+title: "Thesis ADAM Analysis 4"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# ADAM Parameter LMERs
+
+ADAM model parameter estimates were computed in Matlab script:
+
+ThesisADAM_boundedresults.m Output is one file which includes participant and condition identifiers, a
+range of performance measures, and parameter estimates for the
+'Adaptation-only' and 'Full' versions of ADAM. Log-likelihood estimates
+are also included for each model version, indicating quality of model
+fit to data (higher values [less -vs/more +ve] mean better fit)
+
+Adaptation-only version includes estimates of: 
+- Phase Correction ('Adapt_Alpha') 
+- Period Correction ('Adapt_Beta') 
+- Timekeeper Noise ('Adapt_Tn') 
+- Motor Noise ('Adapt_Mn')
+
+Joint version of ADAM includes estimates of: 
+- Period correction ('Joint_Beta') 
+- Temporal Prediction ('Joint_Delta') 
+- Anticipatory Error Correction ('Joint_Gamma') 
+- Timekeeper Noise ('Joint_Tn')
+
+Note that the ADAM parameter estimation procedure is run twice per data
+set with TARGET musician (the one for which parameters are being
+estimated) and REFERENCE musician (the one for which parameters are NOT
+being estimated) swapped so estimates are given for each musician.
+
+### Set directory where to read and write files
+
+```{r}
+setwd("C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis") # NEED TO SET TO CURRENT PATH
+```
+
+### Load libraries
+
+```{r}
+library(bestNormalize)
+library(caret)
+library(dplyr)
+library(emmeans)
+library(flextable)
+library(ggeffects)
+library(ggplot2)
+library(ggpp) # for jitternudge [not currently used]
+library(ggpubr)
+library(ggsci) # For Raincloud plots
+library(grid)
+library(gridExtra)
+library(gtools)
+library(huxtable)
+library(broom.mixed)
+library(lme4) # For lmer
+library(lmerTest) # Alternative for lmer that gives p-values/asterisks. Automatically updates output of lmer (just load here, no need to call below) 
+library(reshape2)
+library(rstatix)
+library(stats) # For confint
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library(CRSSIO) # This has additional custom editing features for boxplot
+library(interactions)
+```
+
+## Effect of Section & Factors on each ADAM parameter
+
+### Adaptation Only ADAM
+
+```{r}
+# Adapt Alpha (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Alpha.lmer <- lmer(Adapt_Alpha_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Alpha.lmer_output <- summary(Adapt_Alpha.lmer)
+Adapt_Alpha.lmer_output
+capture.output(Adapt_Alpha.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Alpha_LMER_output.txt") # Write output to text file
+
+#Adapt_Alpha.ci <- confint(Adapt_Alpha.lmer) 
+#Adapt_Alpha.ci
+#capture.output(Adapt_Alpha.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Alpha_CI.txt")
+
+# Random Effects LMER model
+Adapt_Alpha_random.lmer <- lmer(Adapt_Alpha ~ 1 + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Alpha_random_output <- summary(Adapt_Alpha_random.lmer)
+Adapt_Alpha_random_output
+capture.output(Adapt_Alpha_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Alpha_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Alpha_models_comparison <- anova(Adapt_Alpha_random.lmer, Adapt_Alpha.lmer)
+Adapt_Alpha_models_comparison
+capture.output(Adapt_Alpha_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Alpha_comparison.txt") # Write output to text file
+
+Adapt_Alpha.table <- huxreg(Adapt_Alpha.lmer, Adapt_Alpha_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Alpha.table
+huxtable::quick_docx(Adapt_Alpha.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Alpha_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Adapt Beta (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Beta.lmer <- lmer(Adapt_Beta_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Beta.lmer_output <- summary(Adapt_Beta.lmer)
+Adapt_Beta.lmer_output
+capture.output(Adapt_Beta.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Beta_LMER_output.txt") # Write output to text file
+
+#Adapt_Beta.ci <- confint(Adapt_Beta.lmer) 
+#Adapt_Beta.ci
+#capture.output(Adapt_Beta.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Beta_CI.txt")
+
+# Random Effects LMER model
+Adapt_Beta_random.lmer <- lmer(Adapt_Beta ~ 1 + (1 | Artist/Song), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Beta_random_output <- summary(Adapt_Beta_random.lmer)
+Adapt_Beta_random_output
+capture.output(Adapt_Beta_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Beta_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Beta_models_comparison <- anova(Adapt_Beta_random.lmer, Adapt_Beta.lmer)
+Adapt_Beta_models_comparison
+capture.output(Adapt_Beta_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Beta_comparison.txt") # Write output to text file
+
+Adapt_Beta.table <- huxreg(Adapt_Beta.lmer, Adapt_Beta_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Beta.table
+huxtable::quick_docx(Adapt_Beta.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Beta_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Adapt Tn (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Tn.lmer <- lmer(Adapt_Tn_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Tn.lmer_output <- summary(Adapt_Tn.lmer)
+Adapt_Tn.lmer_output
+capture.output(Adapt_Tn.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Tn_LMER_output.txt") # Write output to text file
+
+#Adapt_Tn.ci <- confint(Adapt_Tn.lmer) 
+#Adapt_Tn.ci
+#capture.output(Adapt_Tn.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Tn_CI.txt")
+
+# Random Effects LMER model
+Adapt_Tn_random.lmer <- lmer(Adapt_Tn ~ 1 + (1 | Artist/Song), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Tn_random_output <- summary(Adapt_Tn_random.lmer)
+Adapt_Tn_random_output
+capture.output(Adapt_Tn_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Tn_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Tn_models_comparison <- anova(Adapt_Tn_random.lmer, Adapt_Tn.lmer)
+Adapt_Tn_models_comparison
+capture.output(Adapt_Tn_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Tn_comparison.txt") # Write output to text file
+
+Adapt_Tn.table <- huxreg(Adapt_Tn.lmer, Adapt_Tn_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Tn.table
+huxtable::quick_docx(Adapt_Tn.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Tn_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Adapt Mn (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Mn.lmer <- lmer(Adapt_Mn_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Mn.lmer_output <- summary(Adapt_Mn.lmer)
+Adapt_Mn.lmer_output
+capture.output(Adapt_Mn.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Mn_LMER_output.txt") # Write output to text file
+
+#Adapt_Mn.ci <- confint(Adapt_Mn.lmer) 
+#Adapt_Mn.ci
+#capture.output(Adapt_Mn.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Mn_CI.txt")
+
+# Random Effects LMER model
+Adapt_Mn_random.lmer <- lmer(Adapt_Mn ~ 1 + (1 | Artist/Song), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Mn_random_output <- summary(Adapt_Mn_random.lmer)
+Adapt_Mn_random_output
+capture.output(Adapt_Mn_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Mn_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Mn_models_comparison <- anova(Adapt_Mn_random.lmer, Adapt_Mn.lmer)
+Adapt_Mn_models_comparison
+capture.output(Adapt_Mn_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Mn_comparison.txt") # Write output to text file
+
+Adapt_Mn.table <- huxreg(Adapt_Mn.lmer, Adapt_Mn_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Mn.table
+huxtable::quick_docx(Adapt_Mn.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Adapt_Mn_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Change order of factor levels before plotting
+model_data <- model.frame(Adapt_Alpha.lmer) %>%
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23", "21", "31", "32")))
+
+probe_interaction(model = Adapt_Alpha.lmer, pred = IOI_Entropy_z, modx = Tempo_z, 
+                  mod2 = Pair_Label)
+Interaction_Plot <- interact_plot(model = Adapt_Alpha.lmer,
+                                  pred = IOI_Entropy_z,
+                                  modx = Tempo_z,
+                                  mod2 = Pair_Label,
+                                  plot.points = FALSE,
+                                  interval = TRUE,
+                                  int.width = 0.95,
+                                  colors = "Set1",
+                                  data = model_data)
+
+Interaction_Plot <- Interaction_Plot +
+  theme_minimal() +
+  labs(title = "Adaptation Phase Correction Interaction Plot",
+       x = "IOI Entropy (z)",
+       y = "Predicted Adaptation Alpha",
+       color = "Pair",
+       fill = "Pair") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+Interaction_Plot <- Interaction_Plot + adam_plot_specs
+Interaction_Plot
+```
+
+
+```{r}
+# Change order of factor levels before plotting
+model_data <- model.frame(Adapt_Beta.lmer) %>%
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23", "21", "31", "32")))
+
+probe_interaction(model = Adapt_Beta.lmer, pred = IOI_Entropy_z, modx = Tempo_z, 
+                  mod2 = Pair_Label)
+Interaction_Plot <- interact_plot(model = Adapt_Beta.lmer,
+                                  pred = IOI_Entropy_z,
+                                  modx = Tempo_z,
+                                  mod2 = Pair_Label,
+                                  plot.points = FALSE,
+                                  interval = TRUE,
+                                  int.width = 0.95,
+                                  colors = "Set1",
+                                  data = model_data)
+
+Interaction_Plot <- Interaction_Plot +
+  theme_minimal() +
+  labs(title = "Adaptation Period Correction Interaction Plot",
+       x = "IOI Entropy (z)",
+       y = "Predicted Adaptation Beta",
+       color = "Pair",
+       fill = "Pair") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+Interaction_Plot <- Interaction_Plot + adam_plot_specs
+Interaction_Plot
+
+```
+```{r}
+# Change order of factor levels before plotting
+model_data <- model.frame(Adapt_Tn.lmer) %>%
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23", "21", "31", "32")))
+
+probe_interaction(model = Adapt_Tn.lmer, pred = IOI_Entropy_z, modx = Tempo_z, 
+                  mod2 = Pair_Label)
+Interaction_Plot <- interact_plot(model = Adapt_Tn.lmer,
+                                  pred = IOI_Entropy_z,
+                                  modx = Tempo_z,
+                                  mod2 = Pair_Label,
+                                  plot.points = FALSE,
+                                  interval = TRUE,
+                                  int.width = 0.95,
+                                  colors = "Set1",
+                                  data = model_data)
+
+Interaction_Plot <- Interaction_Plot +
+  theme_minimal() +
+  labs(title = "Adaptation Timekeeper Noise Interaction Plot",
+       x = "IOI Entropy (z)",
+       y = "Predicted Adaptation Tn",
+       color = "Pair",
+       fill = "Pair") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+Interaction_Plot <- Interaction_Plot + adam_plot_specs
+Interaction_Plot
+```
+```{r}
+# Change order of factor levels before plotting
+model_data <- model.frame(Adapt_Mn.lmer) %>%
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23", "21", "31", "32")))
+
+probe_interaction(model = Adapt_Mn.lmer, pred = IOI_Entropy_z, modx = Tempo_z, 
+                  mod2 = Pair_Label)
+Interaction_Plot <- interact_plot(model = Adapt_Mn.lmer,
+                                  pred = IOI_Entropy_z,
+                                  modx = Tempo_z,
+                                  mod2 = Pair_Label,
+                                  plot.points = FALSE,
+                                  interval = TRUE,
+                                  int.width = 0.95,
+                                  colors = "Set1",
+                                  data = model_data)
+
+Interaction_Plot <- Interaction_Plot +
+  theme_minimal() +
+  labs(title = "Adaptation Motor Noise Interaction Plot",
+       x = "IOI Entropy (z)",
+       y = "Predicted Adaptation Mn",
+       color = "Pair",
+       fill = "Pair") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+Interaction_Plot <- Interaction_Plot + adam_plot_specs
+Interaction_Plot
+```
+
+
+### Joint ADAM
+
+```{r}
+# Joint Beta (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Beta.lmer <- lmer(Joint_Beta_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Beta.lmer_output <- summary(Joint_Beta.lmer)
+Joint_Beta.lmer_output
+capture.output(Joint_Beta.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Beta_LMER_output.txt") # Write output to text file
+
+Joint_Beta.ci <- confint(Joint_Beta.lmer)
+Joint_Beta.ci
+capture.output(Joint_Beta.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Beta_CI.txt")
+
+# Random Effects LMER model
+Joint_Beta_random.lmer <- lmer(Joint_Beta_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Beta_random_output <- summary(Joint_Beta_random.lmer)
+Joint_Beta_random_output
+capture.output(Joint_Beta_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Beta_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Beta_models_comparison <- anova(Joint_Beta.lmer, Joint_Beta_random.lmer)
+Joint_Beta_models_comparison
+capture.output(Joint_Beta_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Beta_comparison.txt") # Write output to text file
+
+Joint_Beta.table <- huxreg(Joint_Beta_random.lmer, Joint_Beta.lmer, statistics = NULL, number_format = 4)
+Joint_Beta.table
+huxtable::quick_docx(Joint_Beta.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Beta_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Joint Delta (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Delta.lmer <- lmer(Joint_Delta_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Delta.lmer_output <- summary(Joint_Delta.lmer)
+Joint_Delta.lmer_output
+capture.output(Joint_Delta.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Delta_LMER_output.txt") # Write output to text file
+
+Joint_Delta.ci <- confint(Joint_Delta.lmer)
+Joint_Delta.ci
+capture.output(Joint_Delta.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Delta_CI.txt")
+
+# Random Effects LMER model
+Joint_Delta_random.lmer <- lmer(Joint_Delta_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Delta_random_output <- summary(Joint_Delta_random.lmer)
+Joint_Delta_random_output
+capture.output(Joint_Delta_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Delta_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Delta_models_comparison <- anova(Joint_Delta.lmer, Joint_Delta_random.lmer)
+Joint_Delta_models_comparison
+capture.output(Joint_Delta_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Delta_comparison.txt") # Write output to text file
+
+Joint_Delta.table <- huxreg(Joint_Delta_random.lmer, Joint_Delta.lmer, statistics = NULL, number_format = 4)
+Joint_Delta.table
+huxtable::quick_docx(Joint_Delta.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Delta_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Joint Gamma (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Gamma.lmer <- lmer(Joint_Gamma_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Gamma.lmer_output <- summary(Joint_Gamma.lmer)
+Joint_Gamma.lmer_output
+capture.output(Joint_Gamma.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Gamma_LMER_output.txt") # Write output to text file
+
+Joint_Gamma.ci <- confint(Joint_Gamma.lmer)
+Joint_Gamma.ci
+capture.output(Joint_Gamma.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Gamma_CI.txt")
+
+# Random Effects LMER model
+Joint_Gamma_random.lmer <- lmer(Joint_Gamma_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Gamma_random_output <- summary(Joint_Gamma_random.lmer)
+Joint_Gamma_random_output
+capture.output(Joint_Gamma_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Gamma_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Gamma_models_comparison <- anova(Joint_Gamma.lmer, Joint_Gamma_random.lmer)
+Joint_Gamma_models_comparison
+capture.output(Joint_Gamma_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Gamma_comparison.txt") # Write output to text file
+
+Joint_Gamma.table <- huxreg(Joint_Gamma_random.lmer, Joint_Gamma.lmer, statistics = NULL, number_format = 4)
+Joint_Gamma.table
+huxtable::quick_docx(Joint_Gamma.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Gamma_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Joint Tn (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Tn.lmer <- lmer(Joint_Tn_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Tn.lmer_output <- summary(Joint_Tn.lmer)
+Joint_Tn.lmer_output
+capture.output(Joint_Tn.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Tn_LMER_output.txt") # Write output to text file
+
+Joint_Tn.ci <- confint(Joint_Tn.lmer)
+Joint_Tn.ci
+capture.output(Joint_Tn.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Tn_CI.txt")
+
+# Random Effects LMER model
+Joint_Tn_random.lmer <- lmer(Joint_Tn_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Tn_random_output <- summary(Joint_Tn_random.lmer)
+Joint_Tn_random_output
+capture.output(Joint_Tn_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Tn_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Tn_models_comparison <- anova(Joint_Tn.lmer, Joint_Tn_random.lmer)
+Joint_Tn_models_comparison
+capture.output(Joint_Tn_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Tn_comparison.txt") # Write output to text file
+
+Joint_Tn.table <- huxreg(Joint_Tn_random.lmer, Joint_Tn.lmer, statistics = NULL, number_format = 4)
+Joint_Tn.table
+huxtable::quick_docx(Joint_Tn.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Joint_Tn_table.docx") # Make Word table (not standardized coefficients)
+```
+```{r}
+# Change order of factor levels before plotting
+model_data <- model.frame(Joint_Beta.lmer) %>%
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23", "21", "31", "32")))
+
+probe_interaction(model = Joint_Beta.lmer, pred = IOI_Entropy_z, modx = Tempo_z, 
+                  mod2 = Pair_Label)
+Interaction_Plot <- interact_plot(model = Joint_Beta.lmer,
+                                  pred = IOI_Entropy_z,
+                                  modx = Tempo_z,
+                                  mod2 = Pair_Label,
+                                  plot.points = FALSE,
+                                  interval = TRUE,
+                                  int.width = 0.95,
+                                  colors = "Set1",
+                                  data = model_data)
+
+Interaction_Plot <- Interaction_Plot +
+  theme_minimal() +
+  labs(title = "Joint Period Correction Interaction Plot",
+       x = "IOI Entropy (z)",
+       y = "Predicted Joint Beta",
+       color = "Pair",
+       fill = "Pair") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+Interaction_Plot <- Interaction_Plot + adam_plot_specs
+Interaction_Plot
+```
+
+```{r}
+# Change order of factor levels before plotting
+model_data <- model.frame(Joint_Delta.lmer) %>%
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23", "21", "31", "32")))
+
+probe_interaction(model = Joint_Delta.lmer, pred = IOI_Entropy_z, modx = Tempo_z, 
+                  mod2 = Pair_Label)
+Interaction_Plot <- interact_plot(model = Joint_Delta.lmer,
+                                  pred = IOI_Entropy_z,
+                                  modx = Tempo_z,
+                                  mod2 = Pair_Label,
+                                  plot.points = FALSE,
+                                  interval = TRUE,
+                                  int.width = 0.95,
+                                  colors = "Set1",
+                                  data = model_data)
+
+Interaction_Plot <- Interaction_Plot +
+  theme_minimal() +
+  labs(title = "Joint Temporal Prediction Interaction Plot",
+       x = "IOI Entropy (z)",
+       y = "Predicted Joint Gamma",
+       color = "Pair",
+       fill = "Pair") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+Interaction_Plot <- Interaction_Plot + adam_plot_specs
+Interaction_Plot
+```
+
+```{r}
+# Change order of factor levels before plotting
+model_data <- model.frame(Joint_Gamma.lmer) %>%
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23", "21", "31", "32")))
+
+probe_interaction(model = Joint_Gamma.lmer, pred = IOI_Entropy_z, modx = Tempo_z, 
+                  mod2 = Pair_Label)
+Interaction_Plot <- interact_plot(model = Joint_Gamma.lmer,
+                                  pred = IOI_Entropy_z,
+                                  modx = Tempo_z,
+                                  mod2 = Pair_Label,
+                                  plot.points = FALSE,
+                                  interval = TRUE,
+                                  int.width = 0.95,
+                                  colors = "Set1",
+                                  data = model_data)
+
+Interaction_Plot <- Interaction_Plot +
+  theme_minimal() +
+  labs(title = "Joint Auditory Correction Interaction Plot",
+       x = "IOI Entropy (z)",
+       y = "Predicted Joint Gamma",
+       color = "Pair",
+       fill = "Pair") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+Interaction_Plot <- Interaction_Plot + adam_plot_specs
+Interaction_Plot
+```
+
+```{r}
+Interactplot <- interact_plot(
+  Joint_Tn.lmer,
+  pred = IOI_Entropy_z,
+  modx = Pair_Label,
+  plot.points = TRUE,
+  interval = TRUE,
+  colors = "Qual1",
+  alpha = 0.2
+) +
+  labs(
+    x = "Part Complexity (z)",
+    y = "Pairwise Asynchrony (ON)",
+    color = "Tempo (z)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "top",
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),  # Adds black border around entire panel
+    axis.line = element_line(color = "black")  # Ensures axis lines are black too
+  )
+
+Interactplot
+```
+
+```{r}
+Interactplot <- interact_plot(
+  Joint_Tn.lmer,
+  pred = Tempo_z,
+  modx = Pair_Label,
+  plot.points = TRUE,
+  interval = TRUE,
+  colors = "Qual1",
+  alpha = 0.2
+) +
+  labs(
+    x = "Tempo(z)",
+    y = "Pairwise Asynchrony (ON)",
+    color = "Tempo (z)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "top",
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),  # Adds black border around entire panel
+    axis.line = element_line(color = "black")  # Ensures axis lines are black too
+  )
+
+Interactplot
+```
+
+
+
+#__________________________________GROUP LEVEL_____________________________________________________________________________________
+### Adaptation Only ADAM
+
+```{r}
+# Adapt Alpha (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Alpha.lmer <- lmer(Adapt_Alpha_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Alpha.lmer_output <- summary(Adapt_Alpha.lmer)
+Adapt_Alpha.lmer_output
+capture.output(Adapt_Alpha.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Alpha_LMER_output.txt") # Write output to text file
+
+#Adapt_Alpha.ci <- confint(Adapt_Alpha.lmer) 
+#Adapt_Alpha.ci
+#capture.output(Adapt_Alpha.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Alpha_CI.txt")
+
+# Random Effects LMER model
+Adapt_Alpha_random.lmer <- lmer(Adapt_Alpha_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Alpha_random_output <- summary(Adapt_Alpha_random.lmer)
+Adapt_Alpha_random_output
+capture.output(Adapt_Alpha_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Alpha_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Alpha_models_comparison <- anova(Adapt_Alpha_random.lmer, Adapt_Alpha.lmer)
+Adapt_Alpha_models_comparison
+capture.output(Adapt_Alpha_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Alpha_comparison.txt") # Write output to text file
+
+Adapt_Alpha.table <- huxreg(Adapt_Alpha.lmer, Adapt_Alpha_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Alpha.table
+huxtable::quick_docx(Adapt_Alpha.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Alpha_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Adapt Beta (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Beta.lmer <- lmer(Adapt_Beta_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Beta.lmer_output <- summary(Adapt_Beta.lmer)
+Adapt_Beta.lmer_output
+capture.output(Adapt_Beta.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Beta_LMER_output.txt") # Write output to text file
+
+#Adapt_Beta.ci <- confint(Adapt_Beta.lmer) 
+#Adapt_Beta.ci
+#capture.output(Adapt_Beta.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Beta_CI.txt")
+
+# Random Effects LMER model
+Adapt_Beta_random.lmer <- lmer(Adapt_Beta_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Beta_random_output <- summary(Adapt_Beta_random.lmer)
+Adapt_Beta_random_output
+capture.output(Adapt_Beta_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Beta_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Beta_models_comparison <- anova(Adapt_Beta_random.lmer, Adapt_Beta.lmer)
+Adapt_Beta_models_comparison
+capture.output(Adapt_Beta_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Beta_comparison.txt") # Write output to text file
+
+Adapt_Beta.table <- huxreg(Adapt_Beta.lmer, Adapt_Beta_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Beta.table
+huxtable::quick_docx(Adapt_Beta.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Beta_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Adapt Tn (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Tn.lmer <- lmer(Adapt_Tn_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Tn.lmer_output <- summary(Adapt_Tn.lmer)
+Adapt_Tn.lmer_output
+capture.output(Adapt_Tn.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Tn_LMER_output.txt") # Write output to text file
+
+#Adapt_Tn.ci <- confint(Adapt_Tn.lmer) 
+#Adapt_Tn.ci
+#capture.output(Adapt_Tn.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Tn_CI.txt")
+
+# Random Effects LMER model
+Adapt_Tn_random.lmer <- lmer(Adapt_Tn_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Tn_random_output <- summary(Adapt_Tn_random.lmer)
+Adapt_Tn_random_output
+capture.output(Adapt_Tn_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Tn_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Tn_models_comparison <- anova(Adapt_Tn_random.lmer, Adapt_Tn.lmer)
+Adapt_Tn_models_comparison
+capture.output(Adapt_Tn_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Tn_comparison.txt") # Write output to text file
+
+Adapt_Tn.table <- huxreg(Adapt_Tn.lmer, Adapt_Tn_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Tn.table
+huxtable::quick_docx(Adapt_Tn.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Tn_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Adapt Mn (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Adapt_Mn.lmer <- lmer(Adapt_Mn_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Mn.lmer_output <- summary(Adapt_Mn.lmer)
+Adapt_Mn.lmer_output
+capture.output(Adapt_Mn.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Mn_LMER_output.txt") # Write output to text file
+
+#Adapt_Mn.ci <- confint(Adapt_Mn.lmer) 
+#Adapt_Mn.ci
+#capture.output(Adapt_Mn.ci, file =
+#"C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Analyses/Bounded/Outputs bound/Script 4/Adapt_Mn_CI.txt")
+
+# Random Effects LMER model
+Adapt_Mn_random.lmer <- lmer(Adapt_Mn_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_Mn_random_output <- summary(Adapt_Mn_random.lmer)
+Adapt_Mn_random_output
+capture.output(Adapt_Mn_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Mn_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_Mn_models_comparison <- anova(Adapt_Mn_random.lmer, Adapt_Mn.lmer)
+Adapt_Mn_models_comparison
+capture.output(Adapt_Mn_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Mn_comparison.txt") # Write output to text file
+
+Adapt_Mn.table <- huxreg(Adapt_Mn.lmer, Adapt_Mn_random.lmer, statistics = NULL, number_format = 4)
+Adapt_Mn.table
+huxtable::quick_docx(Adapt_Mn.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Adapt_Mn_table.docx") # Make Word table (not standardized coefficients)
+```
+
+
+### Joint ADAM
+
+```{r}
+# Joint Beta (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Beta.lmer <- lmer(Joint_Beta_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Beta.lmer_output <- summary(Joint_Beta.lmer)
+Joint_Beta.lmer_output
+capture.output(Joint_Beta.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Beta_LMER_output.txt") # Write output to text file
+
+Joint_Beta.ci <- confint(Joint_Beta.lmer)
+Joint_Beta.ci
+capture.output(Joint_Beta.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Beta_CI.txt")
+
+# Random Effects LMER model
+Joint_Beta_random.lmer <- lmer(Joint_Beta_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Beta_random_output <- summary(Joint_Beta_random.lmer)
+Joint_Beta_random_output
+capture.output(Joint_Beta_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Beta_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Beta_models_comparison <- anova(Joint_Beta.lmer, Joint_Beta_random.lmer)
+Joint_Beta_models_comparison
+capture.output(Joint_Beta_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Beta_comparison.txt") # Write output to text file
+
+Joint_Beta.table <- huxreg(Joint_Beta_random.lmer, Joint_Beta.lmer, statistics = NULL, number_format = 4)
+Joint_Beta.table
+huxtable::quick_docx(Joint_Beta.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Beta_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Joint Delta (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Delta.lmer <- lmer(Joint_Delta_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Delta.lmer_output <- summary(Joint_Delta.lmer)
+Joint_Delta.lmer_output
+capture.output(Joint_Delta.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Delta_LMER_output.txt") # Write output to text file
+
+Joint_Delta.ci <- confint(Joint_Delta.lmer)
+Joint_Delta.ci
+capture.output(Joint_Delta.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Delta_CI.txt")
+
+# Random Effects LMER model
+Joint_Delta_random.lmer <- lmer(Joint_Delta_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Delta_random_output <- summary(Joint_Delta_random.lmer)
+Joint_Delta_random_output
+capture.output(Joint_Delta_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Delta_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Delta_models_comparison <- anova(Joint_Delta.lmer, Joint_Delta_random.lmer)
+Joint_Delta_models_comparison
+capture.output(Joint_Delta_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Delta_comparison.txt") # Write output to text file
+
+Joint_Delta.table <- huxreg(Joint_Delta_random.lmer, Joint_Delta.lmer, statistics = NULL, number_format = 4)
+Joint_Delta.table
+huxtable::quick_docx(Joint_Delta.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Delta_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+Plot <- interact_plot(
+  Joint_Delta.lmer,
+  pred = IOI_Entropy_Global_z,
+  modx = Tempo_z,
+  plot.points = TRUE,
+  interval = TRUE,
+  modx.values = "plus-minus",
+  colors = "Qual1",
+  alpha = 0.2
+) +
+  labs(
+    x = "Piece Complexity (z)",
+    y = "Temporal Prediction (ON)",
+    color = "Tempo (z)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "top",
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),  # Adds black border around entire panel
+    axis.line = element_line(color = "black")  # Ensures axis lines are black too
+  )
+
+Plot
+```
+
+
+```{r}
+# Joint Gamma (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Gamma.lmer <- lmer(Joint_Gamma_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Gamma.lmer_output <- summary(Joint_Gamma.lmer)
+Joint_Gamma.lmer_output
+capture.output(Joint_Gamma.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Gamma_LMER_output.txt") # Write output to text file
+
+Joint_Gamma.ci <- confint(Joint_Gamma.lmer)
+Joint_Gamma.ci
+capture.output(Joint_Gamma.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Gamma_CI.txt")
+
+# Random Effects LMER model
+Joint_Gamma_random.lmer <- lmer(Joint_Gamma_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Gamma_random_output <- summary(Joint_Gamma_random.lmer)
+Joint_Gamma_random_output
+capture.output(Joint_Gamma_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Gamma_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Gamma_models_comparison <- anova(Joint_Gamma.lmer, Joint_Gamma_random.lmer)
+Joint_Gamma_models_comparison
+capture.output(Joint_Gamma_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Gamma_comparison.txt") # Write output to text file
+
+Joint_Gamma.table <- huxreg(Joint_Gamma_random.lmer, Joint_Gamma.lmer, statistics = NULL, number_format = 4)
+Joint_Gamma.table
+huxtable::quick_docx(Joint_Gamma.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Gamma_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Joint Tn (LM NOT LMER BC INCLUDEING PAIR MAKES IT SINGULAR)
+Joint_Tn.lmer <- lmer(Joint_Tn_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Tn.lmer_output <- summary(Joint_Tn.lmer)
+Joint_Tn.lmer_output
+capture.output(Joint_Tn.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Tn_LMER_output.txt") # Write output to text file
+
+Joint_Tn.ci <- confint(Joint_Tn.lmer)
+Joint_Tn.ci
+capture.output(Joint_Tn.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Tn_CI.txt")
+
+# Random Effects LMER model
+Joint_Tn_random.lmer <- lmer(Joint_Tn_ON ~ 1 + (1 | Artist) + (1 | Song), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_Tn_random_output <- summary(Joint_Tn_random.lmer)
+Joint_Tn_random_output
+capture.output(Joint_Tn_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Tn_random_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Joint_Tn_models_comparison <- anova(Joint_Tn.lmer, Joint_Tn_random.lmer)
+Joint_Tn_models_comparison
+capture.output(Joint_Tn_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Tn_comparison.txt") # Write output to text file
+
+Joint_Tn.table <- huxreg(Joint_Tn_random.lmer, Joint_Tn.lmer, statistics = NULL, number_format = 4)
+Joint_Tn.table
+huxtable::quick_docx(Joint_Tn.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 4/Results/Group_Joint_Tn_table.docx") # Make Word table (not standardized coefficients)
+```
+
+
+```
+

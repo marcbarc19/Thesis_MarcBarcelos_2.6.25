@@ -1,0 +1,423 @@
+---
+title: "Thesis ADAM Analysis 2"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# LMERs for Asynchronies
+
+ADAM model parameter estimates were computed in Matlab script:
+
+ThesisADAM_boundedresults.m Output is one file which includes participant and condition identifiers, a
+range of performance measures, and parameter estimates for the
+'Adaptation-only' and 'Full' versions of ADAM. Log-likelihood estimates
+are also included for each model version, indicating quality of model
+fit to data (higher values [less -vs/more +ve] mean better fit)
+
+Adaptation-only version includes estimates of: 
+- Phase Correction ('Adapt_Alpha') 
+- Period Correction ('Adapt_Beta') 
+- Timekeeper Noise ('Adapt_Tn') 
+- Motor Noise ('Adapt_Mn')
+
+Joint version of ADAM includes estimates of: 
+- Period correction ('Joint_Beta') 
+- Temporal Prediction ('Joint_Delta') 
+- Anticipatory Error Correction ('Joint_Gamma') 
+- Timekeeper Noise ('Joint_Tn')
+
+Note that the ADAM parameter estimation procedure is run twice per data
+set with TARGET musician (the one for which parameters are being
+estimated) and REFERENCE musician (the one for which parameters are NOT
+being estimated) swapped so estimates are given for each musician.
+
+### Set directory where to read and write files
+
+```{r}
+setwd("C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis") # NEED TO SET TO CURRENT PATH
+```
+
+### Load libraries
+
+```{r}
+library(bestNormalize)
+library(caret)
+library(dplyr)
+library(emmeans)
+library(flextable)
+library(ggeffects)
+library(ggplot2)
+library(ggpp) # for jitternudge [not currently used]
+library(ggpubr)
+library(ggsci) # For Raincloud plots
+library(grid)
+library(gridExtra)
+library(gtools)
+library(huxtable)
+library(broom.mixed)
+library(lme4) # For lmer
+library(lmerTest) # Alternative for lmer that gives p-values/asterisks. Automatically updates output of lmer (just load here, no need to call below) 
+library(reshape2)
+library(rstatix)
+library(stats) # For confint
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library(CRSSIO) # This has additional custom editing features for boxplot
+library(interactions)
+```
+
+## Statistical Tests of Asynchrony
+
+### Remove NAN's for transformation
+
+```{r}
+print("Rows removed due to NaN in DV_Async (Section and Pair):")
+all_data_pairs %>%
+  filter(is.na(DV_Async)) %>%
+  mutate(removed_info = paste(Song, Artist, Pair_Label)) %>%
+  pull(removed_info) %>%
+  print()
+# Remove rows with NaN in DV_Async and proceed with the analysis
+all_data_pairs <- all_data_pairs %>% filter(!is.na(DV_Async))
+```
+
+### Check the dataset for normality and transform if not normal
+
+```{r}
+#Check normality
+ntesta1 <- all_data %>% shapiro_test(DV_Async)
+ntesta1
+
+#Determine best method for transformation
+bestNormalize(all_data$DV_Async) #Order Norm
+
+#Complete transforation and check normality for improvement
+DV_Async_ON <- bestNormalize(all_data$DV_Async)
+all_data$DV_Async_ON <- predict(DV_Async_ON, all_data$DV_Async)
+ntestLLE <- all_data %>% shapiro_test(DV_Async_ON) 
+ntestLLE
+```
+
+
+### Ensure that all relevant columns are factors before LMER
+
+```{r}
+all_data <- all_data %>%
+  mutate(Pair_Label = case_when(
+    (MusicianA == 1 & MusicianB == 2) ~ "12",
+    (MusicianA == 1 & MusicianB == 3) ~ "13",
+    (MusicianA == 2 & MusicianB == 3) ~ "23",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(Pair_Label))
+all_data$Pair_Label <- factor(all_data$Pair_Label, levels = c("12", "13","23"))
+names(all_data)[names(all_data) == "IOI Entropy"] <- "IOI_Entropy"
+all_data$IOI_Entropy_z <- scale(all_data$IOI_Entropy)
+all_data$Tempo_z <- scale(all_data$Tempo)
+
+all_data <- all_data %>%
+  mutate(Pair_Label = as.character(Pair_Label),  # Convert to character to handle numeric changes
+         Pair_Label = ifelse(Flipped == 2, 
+                              case_when(
+                                Pair_Label == "12" ~ "21",
+                                Pair_Label == "13" ~ "31",
+                                Pair_Label == "23" ~ "32",
+                                TRUE ~ Pair_Label  # Keep other values unchanged
+                              ),
+                              Pair_Label))
+
+# Print the updated columns to check
+print(all_data %>% select(ID, Pair_Label, Flipped))
+```
+
+## Asynchrony LMER Model
+
+### Full Model
+
+```{r}
+Asynchrony.lmer <- lmer(DV_Async_ON ~ Pair_Label * IOI_Entropy_z * Tempo_z + (1 | Song) + (1 | Artist) + (1 | N_Events),
+                        data = all_data, 
+                        control = lmerControl(optimizer = "bobyqa"), 
+                        REML = FALSE)
+# Model summary
+Asynchrony.lmer_output <- summary(Asynchrony.lmer)
+Asynchrony.lmer_output
+capture.output(Asynchrony.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/Asynchrony_LMER_output.txt") # Write output to text file
+
+Asynchrony.ci <- confint(Asynchrony.lmer) # Doesn't work with Box-Cox transformed asynchronies
+Asynchrony.ci
+capture.output(Asynchrony.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/Asynchrony_CI.txt")
+```
+
+### Random Model
+
+```{r}
+# Random Effects LMER model
+Asynchrony_random.lmer <- lmer(DV_Async_ON ~ 1 + + (1 | Artist/Song), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Asynchrony_random_output <- summary(Asynchrony_random.lmer)
+Asynchrony_random_output
+capture.output(Asynchrony_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/Asynchrony_random_output.txt") # Write output to text file
+```
+
+### Compare Models
+
+```{r}
+# Compare full and reduced models 
+Asynchrony_models_comparison <- anova(Asynchrony.lmer, Asynchrony_random.lmer)
+Asynchrony_models_comparison
+capture.output(Asynchrony_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/Asynchrony_comparison.txt") # Write output to text file
+```
+
+```{r}
+Asynchrony.table <- huxreg(Asynchrony.lmer, Asynchrony_random.lmer, statistics = NULL, number_format = 4)
+Asynchrony.table
+huxtable::quick_docx(Asynchrony.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/Asynchrony_MEAN_table.docx") # Make Word table (not standardized coefficients)
+```
+
+```{r}
+# Create a named vector for facet labels
+pair_labels <- c(
+  "12" = "Piano (Bass)",
+  "13" = "Piano (Drums)",
+  "23" = "Bass (Drums)",
+  "21" = "Bass (Piano)",
+  "31" = "Drums (Piano)",
+  "32" = "Drums (Bass)"
+)
+
+complexity_pair_plot <- interact_plot(
+  Asynchrony.lmer,
+  pred = IOI_Entropy_z,
+  modx = Pair_Label,
+  plot.points = TRUE,
+  interval = TRUE,
+  point.alpha = 0.3,   # more opaque dots
+  line.alpha = 1,      # fully visible lines
+  linetype = "solid"   # all lines solid
+) +
+  labs(
+    x = "Part Complexity (z)",
+    y = "Individual Asynchrony (ON)",
+    color = "Paired Musicians",
+    fill = "Paired Musicians"
+  ) +
+  scale_color_manual(
+    values = c(
+      "12" = "#66C2A5",
+      "13" = "#FC8D62",
+      "23" = "#8DA0CB",
+      "21" = "#E78AC3",
+      "31" = "#A6D854",
+      "32" = "#D73027"
+    ),
+    labels = pair_labels
+  ) +
+  scale_fill_manual(
+    values = c(
+      "12" = "#66C2A5",
+      "13" = "#FC8D62",
+      "23" = "#8DA0CB",
+      "21" = "#E78AC3",
+      "31" = "#A6D854",
+      "32" = "#D73027"
+    ),
+    labels = pair_labels
+  ) +
+  facet_wrap(~ Pair_Label, labeller = labeller(Pair_Label = pair_labels)) +
+  guides(linetype = "none") +  # removes line type legend
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "top",
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),
+    axis.line = element_line(color = "black")
+  )
+
+complexity_pair_plot
+
+```
+
+```{r}
+# Create a named vector for facet labels
+pair_labels <- c(
+  "12" = "Piano (Bass)",
+  "13" = "Piano (Drums)",
+  "23" = "Bass (Drums)",
+  "21" = "Bass (Piano)",
+  "31" = "Drums (Piano)",
+  "32" = "Drums (Bass)"
+)
+
+tempo_pair_plot <- interact_plot(
+  Asynchrony.lmer,
+  pred = Tempo_z,
+  modx = Pair_Label,
+  plot.points = TRUE,
+  interval = TRUE,
+  point.alpha = 0.3,   # more opaque dots
+  line.alpha = 1,      # fully visible lines
+  linetype = "solid"   # all lines solid
+) +
+  labs(
+    x = "Tempo (z)",
+    y = "Individual Asynchrony (ON)",
+    color = "Paired Musicians",
+    fill = "Paired Musicians"
+  ) +
+  scale_color_manual(
+    values = c(
+      "12" = "#66C2A5",
+      "13" = "#FC8D62",
+      "23" = "#8DA0CB",
+      "21" = "#E78AC3",
+      "31" = "#A6D854",
+      "32" = "#D73027"
+    ),
+    labels = pair_labels
+  ) +
+  scale_fill_manual(
+    values = c(
+      "12" = "#66C2A5",
+      "13" = "#FC8D62",
+      "23" = "#8DA0CB",
+      "21" = "#E78AC3",
+      "31" = "#A6D854",
+      "32" = "#D73027"
+    ),
+    labels = pair_labels
+  ) +
+  facet_wrap(~ Pair_Label, labeller = labeller(Pair_Label = pair_labels)) +
+  guides(linetype = "none") +  # removes line type legend
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "top",
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),
+    axis.line = element_line(color = "black")
+  )
+
+tempo_pair_plot
+```
+
+
+## Group Asynch LMER
+
+```{r}
+# Filter out the flipped versions (Flipped == 1)
+filtered_data <- all_data %>%
+  filter(Flipped == 1)
+
+# 1. Calculate the RMS of DV_Async_ON for each group
+rms_table <- filtered_data %>%
+  group_by(Song, Artist) %>%
+  summarise(Group_Async_ON = sqrt(mean(DV_Async_ON^2, na.rm = TRUE)), .groups = "drop")
+
+# 2. Calculate global IOI entropy per Song/Artist using N_Events weighting
+ioi_entropy_global <- all_data %>%
+  group_by(Song, Artist) %>%
+  summarise(
+    IOI_Entropy_Global = sum(IOI_Entropy * N_Events, na.rm = TRUE) / sum(N_Events, na.rm = TRUE),
+    Total_Events = sum(N_Events, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# 3. Create averaged summary of all other variables (including IOI_Entropy mean)
+all_data_group <- all_data %>% 
+  group_by(Song, Artist) %>% 
+  summarise_at(vars(
+    DV_Async, Tempo, IOI_Entropy, SD_ITI, CV_ITI,
+    Adapt_Alpha_ON, Adapt_Beta_ON, Adapt_Tn_ON, Adapt_Mn_ON, Adapt_LLE,
+    Joint_Beta_ON, Joint_Delta_ON, Joint_Gamma_ON, Joint_Tn_ON, Joint_LLE, N_Events
+  ), mean, na.rm = TRUE)
+
+# 4. Z-score key predictors
+all_data_group$IOI_Entropy_z <- scale(all_data_group$IOI_Entropy)
+all_data_group$Tempo_z <- scale(all_data_group$Tempo)
+
+# 5. Merge in Group_Async_ON and IOI_Entropy_Global
+all_data_group <- all_data_group %>%
+  left_join(rms_table, by = c("Song", "Artist")) %>%
+  left_join(ioi_entropy_global, by = c("Song", "Artist"))
+
+all_data_group$IOI_Entropy_Global_z <- scale(all_data_group$IOI_Entropy_Global)
+# 6. View updated summary
+print(all_data_group)
+```
+
+
+### Full Model
+
+```{r}
+Asynchrony.lmer <- lmer(Group_Async_ON ~ IOI_Entropy_Global_z * Tempo_z + (1 | Song) + (1 | Artist) + (1 | N_Events),
+                        data = all_data_group, 
+                        control = lmerControl(optimizer = "bobyqa"), 
+                        REML = FALSE)
+# Model summary
+Asynchrony.lmer_output <- summary(Asynchrony.lmer)
+Asynchrony.lmer_output
+capture.output(Asynchrony.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/GroupAsynchrony_LMER_output.txt") # Write output to text file
+
+Asynchrony.ci <- confint(Asynchrony.lmer) # Doesn't work with Box-Cox transformed asynchronies
+Asynchrony.ci
+capture.output(Asynchrony.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/GroupAsynchrony_CI.txt")
+```
+
+### Random Model
+
+```{r}
+# Random Effects LMER model
+Asynchrony_random.lmer <- lmer(Group_Async_ON ~ 1 + (1 | Song) + (1 | Artist), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Asynchrony_random_output <- summary(Asynchrony_random.lmer)
+Asynchrony_random_output
+capture.output(Asynchrony_random_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/GroupAsynchrony_random_output.txt") # Write output to text file
+```
+
+### Compare Models
+
+```{r}
+# Compare full and reduced models 
+Asynchrony_models_comparison <- anova(Asynchrony.lmer, Asynchrony_random.lmer)
+Asynchrony_models_comparison
+capture.output(Asynchrony_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/GroupAsynchrony_comparison.txt") # Write output to text file
+```
+
+```{r}
+Asynchrony.table <- huxreg(Asynchrony.lmer, Asynchrony_random.lmer, statistics = NULL, number_format = 4)
+Asynchrony.table
+huxtable::quick_docx(Asynchrony.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 2/Results/GroupAsynchrony_MEAN_table.docx") # Make Word table (not standardized coefficients)
+```
+```{r}
+library(interactions)
+library(ggplot2)
+interact_plot(
+  Asynchrony.lmer,
+  pred = IOI_Entropy_Global_z,
+  modx = Tempo_z,
+  plot.points = TRUE,
+  interval = TRUE,
+  modx.values = "plus-minus",
+  colors = "Qual1",
+  alpha = 0.2
+) +
+  labs(
+    x = "Piece Complexity (z)",
+    y = "Group Asynchrony (ON)",
+    color = "Tempo (z)"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "top",
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    panel.border = element_rect(color = "black", fill = NA, size = 1),  # Adds black border around entire panel
+    axis.line = element_line(color = "black")  # Ensures axis lines are black too
+  )
+
+
+```
+

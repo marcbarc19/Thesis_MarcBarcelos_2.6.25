@@ -1,0 +1,990 @@
+---
+title: "Thesis ADAM Analysis 3"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# ADAM Parameter Plots
+
+ADAM model parameter estimates were computed in Matlab script:
+
+ThesisADAM_boundedresults.m Output is one file which includes participant and condition identifiers, a
+range of performance measures, and parameter estimates for the
+'Adaptation-only' and 'Full' versions of ADAM. Log-likelihood estimates
+are also included for each model version, indicating quality of model
+fit to data (higher values [less -vs/more +ve] mean better fit)
+
+Adaptation-only version includes estimates of: 
+- Phase Correction ('Adapt_Alpha') 
+- Period Correction ('Adapt_Beta') 
+- Timekeeper Noise ('Adapt_Tn') 
+- Motor Noise ('Adapt_Mn')
+
+Joint version of ADAM includes estimates of: 
+- Period correction ('Joint_Beta') 
+- Temporal Prediction ('Joint_Delta') 
+- Anticipatory Error Correction ('Joint_Gamma') 
+- Timekeeper Noise ('Joint_Tn')
+
+Note that the ADAM parameter estimation procedure is run twice per data
+set with TARGET musician (the one for which parameters are being
+estimated) and REFERENCE musician (the one for which parameters are NOT
+being estimated) swapped so estimates are given for each musician.
+
+### Set directory where to read and write files
+
+```{r}
+setwd("C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis") # NEED TO SET TO CURRENT PATH
+```
+
+### Load libraries
+
+```{r}
+library(bestNormalize)
+library(caret)
+library(dplyr)
+library(emmeans)
+library(flextable)
+library(ggeffects)
+library(ggplot2)
+library(ggpp) # for jitternudge [not currently used]
+library(ggpubr)
+library(ggsci) # For Raincloud plots
+library(grid)
+library(gridExtra)
+library(gtools)
+library(huxtable)
+library(broom.mixed)
+library(lme4) # For lmer
+library(lmerTest) # Alternative for lmer that gives p-values/asterisks. Automatically updates output of lmer (just load here, no need to call below) 
+library(reshape2)
+library(rstatix)
+library(stats) # For confint
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library(CRSSIO) # This has additional custom editing features for boxplot
+```
+
+## Plot ADAM Parameter Estimates (Transformed)
+
+### Check normality of ADAM parameters
+
+```{r}
+#ADAPT MODEL
+set.seed(2001)
+
+#Adapt Alpha (TRANSFORMED)
+ntesta3 <- all_data %>% shapiro_test(Adapt_Alpha)
+ntesta3
+print(bestNormalize(all_data$Adapt_Alpha))
+Adapt_Alpha_ON <- bestNormalize(all_data$Adapt_Alpha)
+all_data$Adapt_Alpha_ON <- predict(Adapt_Alpha_ON, all_data$Adapt_Alpha)
+ntestLLE <- all_data %>% shapiro_test(Adapt_Alpha_ON) 
+ntestLLE
+
+set.seed(2001)
+#Adapt Beta (TRANSFORMED)
+ntesta3 <- all_data %>% shapiro_test(Adapt_Beta) 
+ntesta3
+print(bestNormalize(all_data$Adapt_Beta))
+Adapt_Beta_ON <- bestNormalize(all_data$Adapt_Beta)
+all_data$Adapt_Beta_ON <- predict(Adapt_Beta_ON, all_data$Adapt_Beta)
+ntestLLE <- all_data %>% shapiro_test(Adapt_Beta_ON) 
+ntestLLE
+
+set.seed(2001)
+#Adapt TN (TRANSFORMED)
+ntesta3 <- all_data %>% shapiro_test(Adapt_Tn) 
+ntesta3
+bestNormalize(all_data$Adapt_Tn)
+Adapt_Tn_ON <- bestNormalize(all_data$Adapt_Tn)
+all_data$Adapt_Tn_ON <- predict(Adapt_Tn_ON, all_data$Adapt_Tn)
+ntestLLE <- all_data %>% shapiro_test(Adapt_Tn_ON) 
+ntestLLE
+
+set.seed(2001)
+#Adapt Mn (Kept Untransformed)
+ntesta3 <- all_data %>% shapiro_test(Adapt_Mn) 
+ntesta3
+bestNormalize(all_data$Adapt_Mn)
+Adapt_Mn_ON <- bestNormalize(all_data$Adapt_Mn)
+all_data$Adapt_Mn_ON <- predict(Adapt_Mn_ON, all_data$Adapt_Mn)
+ntestLLE <- all_data %>% shapiro_test(Adapt_Mn_ON) 
+ntestLLE
+
+#JOINT MODEL
+set.seed(2001)
+
+#Joint Beta (TRANSFORMED)
+ntesta3 <- all_data %>% shapiro_test(Joint_Beta)
+ntesta3
+bestNormalize(all_data$Joint_Beta)
+Joint_Beta_ON <- bestNormalize(all_data$Joint_Beta)
+all_data$Joint_Beta_ON <- predict(Joint_Beta_ON, all_data$Joint_Beta)
+ntestLLE <- all_data %>% shapiro_test(Joint_Beta_ON) 
+ntestLLE
+
+set.seed(2001)
+#Joint Delta (TRANSFORMED, still bad arguably similar)
+ntesta3 <- all_data %>% shapiro_test(Joint_Delta)
+ntesta3
+bestNormalize(all_data$Joint_Delta)
+Joint_Delta_ON <- bestNormalize(all_data$Joint_Delta)
+all_data$Joint_Delta_ON <- predict(Joint_Delta_ON, all_data$Joint_Delta)
+ntestLLE <- all_data %>% shapiro_test(Joint_Delta_ON) 
+ntestLLE
+
+set.seed(2001)
+#Joint Gamma (TRANSFORMED, still bad arguably similar)
+ntesta3 <- all_data %>% shapiro_test(Joint_Gamma)
+ntesta3
+bestNormalize(all_data$Joint_Gamma)
+Joint_Gamma_ON <- bestNormalize(all_data$Joint_Gamma)
+all_data$Joint_Gamma_ON <- predict(Joint_Gamma_ON, all_data$Joint_Gamma)
+ntestLLE <- all_data %>% shapiro_test(Joint_Gamma_ON) 
+ntestLLE
+
+set.seed(2001)
+#Joint TN (TRANSFORMED, still not amazing)
+ntesta3 <- all_data %>% shapiro_test(Joint_Tn)
+ntesta3
+bestNormalize(all_data$Joint_Tn)
+Joint_Tn_ON <- bestNormalize(all_data$Joint_Tn)
+all_data$Joint_Tn_ON <- predict(Joint_Tn_ON, all_data$Joint_Tn)
+ntestLLE <- all_data %>% shapiro_test(Joint_Tn_ON) 
+ntestLLE
+```
+
+### Define plot theme
+
+```{r}
+adam_plot_specs <- theme(panel.background = element_rect(fill = NA, color = "black", size = 1),
+                                        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                                        plot.title = element_text(color="black", size=24, face="bold"),
+                                        axis.title = element_text(color = "black", size = 15), # size = 22
+                                        axis.title.y = element_text(margin = margin(r = 5)), # r = 6
+                                        axis.text = element_text(color = "black", size = 15), #18
+                                        axis.title.x = element_text(margin = margin(t = 6)), # t = 10
+                                        legend.title = element_text(color="black", size = 15), # size = 18
+                                        legend.text = element_text(color="black", size = 14), # size = 16
+                                        legend.key = ggplot2::element_rect(fill = NA, colour = NA),
+                                        #legend.position = c(.2, .8)) # c(.8, .8)
+                                        legend.position = "top",
+                                        legend.box.spacing = unit(1, "pt"),
+                                        #plot.margin = margin(6,6,6,6, "pt")) # t, r, b, l
+                                        plot.margin = margin(28,6,6,6, "pt")) # t, r, b, l - For Portrait
+#plot.margin = margin(28,9,6,9, "pt")) # t, r, b, l - For Landscape
+```
+
+### Define split Adaptation Only plots
+
+```{r}
+
+all_data <- all_data %>%
+  mutate(Musicians_Present = case_when(
+    (MusicianA == 1 & MusicianB == 2) ~ "12",
+    (MusicianA == 1 & MusicianB == 3) ~ "13",
+    (MusicianA == 2 & MusicianB == 3) ~ "23",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(Musicians_Present))
+
+Adapt_Alpha_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Alpha_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Alpha_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Alpha_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightcoral', 'red','darkred')) +
+  labs(x="Pair", y = "Phase Correction", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none") 
+
+#Adapt_Alpha_plot
+#ggsave("Adapt_Alpha_plot.png", dpi=600)
+
+
+Adapt_Beta_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Beta_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Beta_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Beta_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightsalmon', 'orange','darkorange')) +
+  labs(x="Pair", y = "Period Correction", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+#Adapt_Beta_plot
+#ggsave("Adapt_Beta_plot.png", dpi=600)
+
+
+Adapt_Tn_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Tn_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Tn_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Tn_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgrey','darkgrey','black')) +
+  labs(x="Pair", y = "Period Correction", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+#Adapt_Tn_plot
+#ggsave("Adapt_Tn_plot.png", dpi=600)
+
+Adapt_Mn_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Mn_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Mn_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Mn_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgrey','darkgrey','black')) +
+  labs(x="Pair", y = "Period Correction", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+#Adapt_Mn_plot
+#ggsave("Adapt_Mn_plot.png", dpi=600)
+
+# Adaptation only plot
+ADAM_Adapt_Plot <- ggarrange(Adapt_Alpha_plot, Adapt_Beta_plot, 
+                             Adapt_Tn_plot, Adapt_Mn_plot,  
+                             labels = c("A", "B", "C", "D"),
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Adapt_Plot
+ADAM_Adapt_Plot <- ADAM_Adapt_Plot %>% annotate_figure(top = text_grob("Adaptation Only Model", color = "Black", face = "bold", size = 24))
+ADAM_Adapt_Plot
+```
+
+### Define split Joint Only plots
+
+```{r}
+Joint_Beta_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Beta_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Beta_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Beta_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightsalmon', 'orange','darkorange')) +
+  labs(x="Pair", y = "Period Correction", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none") 
+
+
+Joint_Delta_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Delta_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Delta_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Delta_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightblue','blue','royalblue')) +
+  labs(x="Pair", y = "Temporal Prediction", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+
+Joint_Gamma_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Gamma_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Gamma_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Gamma_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgreen','darkgreen','seagreen')) +
+  labs(x="Pair", y = "Anticipatory Correction", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+Joint_Tn_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Tn_ON, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Tn_ON, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Tn_ON, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgrey','darkgrey','black')) +
+  labs(x="Pair", y = "Timekeeper Noise", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+# Adaptation only plot
+ADAM_Joint_Plot <- ggarrange(Joint_Beta_plot, Joint_Delta_plot, 
+                             Joint_Gamma_plot, Joint_Tn_plot,  
+                             labels = c("A", "B", "C", "D"),
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Joint_Plot
+ADAM_Joint_Plot <- ADAM_Joint_Plot %>% annotate_figure(top = text_grob("Joint Model", color = "Black", face = "bold", size = 24))
+ADAM_Joint_Plot
+```
+
+### Combine Plots
+
+```{r}
+ADAM_Split_Full_Plot <- ggarrange(ADAM_Adapt_Plot, ADAM_Joint_Plot, ncol = 2, nrow = 1)
+ADAM_Split_Full_Plot
+ADAM_Split_Full_Plot <- ADAM_Split_Full_Plot %>% annotate_figure(top = text_grob("ADAM Parameters - Pairwise", color = "Black", face = "bold", size = 40))
+ADAM_Split_Full_Plot
+```
+
+# PLOT NOT PAIRWISE
+
+```{r}
+Adapt_Alpha_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Alpha_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'red', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'red', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'red', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Phase Correction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Adapt_Beta_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Beta_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'orange', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'orange', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'orange', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Period Correction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Adapt_Tn_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Tn_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'grey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'grey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'grey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Timekeeper Noise
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Adapt_Mn_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Mn_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'grey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'grey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'grey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Motor Noise
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+# Adaptation only plot
+ADAM_Adapt_Plot_Com <- ggarrange(Adapt_Alpha_plot, Adapt_Beta_plot, 
+                             Adapt_Tn_plot, Adapt_Mn_plot,  
+                             labels = c("A", "B", "C", "D"),
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Adapt_Plot_Com
+ADAM_Adapt_Plot_Com <- ADAM_Adapt_Plot_Com %>% annotate_figure(top = text_grob("Adaptation Only Model", color = "Black", face = "bold", size = 24))
+ADAM_Adapt_Plot_Com
+```
+
+```{r}
+Joint_Beta_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Beta_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'orange', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'orange', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'orange', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Period Correction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Joint_Delta_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Delta_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'blue', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'blue', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'blue', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Temporal Prediction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Joint_Gamma_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Gamma_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'darkgreen', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'darkgreen', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'darkgreen', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Anticipatory Correction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Joint_Tn_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Tn_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'grey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'grey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'grey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "" #Timekeeper Noise
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+# Adaptation only plot
+ADAM_Joint_Plot_Com <- ggarrange(Joint_Beta_plot, Joint_Delta_plot, 
+                             Joint_Gamma_plot, Joint_Tn_plot,  
+                             labels = c("A", "B", "C", "D"),
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Joint_Plot_Com
+ADAM_Joint_Plot_Com <- ADAM_Joint_Plot_Com %>% annotate_figure(top = text_grob("Joint Model", color = "Black", face = "bold", size = 24))
+ADAM_Joint_Plot_Com
+```
+### Combine Plots
+
+```{r}
+ADAM_Full_Plot <- ggarrange(ADAM_Adapt_Plot_Com, ADAM_Joint_Plot_Com, ncol = 2, nrow = 1)
+ADAM_Full_Plot
+ADAM_Full_Plot <- ADAM_Full_Plot %>% annotate_figure(top = text_grob("ADAM Parameters", color = "Black", face = "bold", size = 40))
+ADAM_Full_Plot
+```
+
+```{r}
+ADAM_ComAdapt_Plot <- ggarrange(ADAM_Adapt_Plot, ADAM_Adapt_Plot_Com, ncol = 2, nrow = 1)
+ADAM_ComAdapt_Plot
+ADAM_ComAdapt_Plot <- ADAM_ComAdapt_Plot %>% annotate_figure(top = text_grob("ADAM Adapt Parameters", color = "Black", face = "bold", size = 40))
+ADAM_ComAdapt_Plot
+```
+
+```{r}
+ADAM_ComJoint_Plot <- ggarrange(ADAM_Joint_Plot, ADAM_Joint_Plot_Com, ncol = 2, nrow = 1)
+ADAM_ComJoint_Plot
+ADAM_ComJoint_Plot <- ADAM_ComJoint_Plot %>% annotate_figure(top = text_grob("ADAM Joint Parameters", color = "Black", face = "bold", size = 40))
+ADAM_ComJoint_Plot
+```
+
+```{r}
+ADAM_Com_Plot <- ggarrange(ADAM_ComAdapt_Plot, ADAM_ComJoint_Plot, ncol = 2, nrow = 1)
+ADAM_Com_Plot
+ADAM_Com_Plot <- ADAM_Com_Plot %>% annotate_figure(top = text_grob("", color = "Black", face = "bold", size = 40))
+ADAM_Com_Plot
+```
+
+#### _____________________ NOT TRANSFORMED PLOTS______________________________________________________________________
+#### ___________________________________________________________________________________________________________________________
+### Define split Adaptation Only plots
+
+```{r}
+Adapt_Alpha_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Alpha, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Alpha, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Alpha, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightcoral', 'red','darkred')) +
+  labs(x= NULL, y = "Phase Correction", fill = "")+
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none") +
+  theme(axis.text.x = element_blank())
+
+#Adapt_Alpha_plot
+#ggsave("Adapt_Alpha_plot.png", dpi=600)
+
+
+Adapt_Beta_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Beta, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Beta, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Beta, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightsalmon', 'orange','darkorange')) +
+  labs(x= NULL, y = "Period Correction", fill = "")+
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none") + 
+  theme(axis.text.x = element_blank())
+
+#Adapt_Beta_plot
+#ggsave("Adapt_Beta_plot.png", dpi=600)
+
+
+Adapt_Tn_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Tn, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Tn, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Tn, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgrey','darkgrey','black')) +
+  labs(x= NULL, y = "Timekeeper Noise", fill = "")+
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none") + 
+  theme(axis.text.x = element_blank())
+
+#Adapt_Tn_plot
+#ggsave("Adapt_Tn_plot.png", dpi=600)
+
+Adapt_Mn_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Adapt_Mn, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Adapt_Mn, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Adapt_Mn, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgrey','darkgrey','black')) +
+  labs(x="Pair", y = "Motor Noise", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+#Adapt_Mn_plot
+#ggsave("Adapt_Mn_plot.png", dpi=600)
+
+# Adaptation only plot
+ADAM_Adapt_Plot <- ggarrange(Adapt_Alpha_plot, Adapt_Beta_plot, 
+                             Adapt_Tn_plot, Adapt_Mn_plot,
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Adapt_Plot
+ADAM_Adapt_Plot <- ADAM_Adapt_Plot %>% annotate_figure(top = text_grob("Adaptation Only Model", color = "Black", face = "bold", size = 24))
+ADAM_Adapt_Plot
+```
+
+### Define split Joint Only plots
+
+```{r}
+Joint_Beta_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Beta, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Beta, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Beta, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightsalmon', 'orange','darkorange')) +
+  labs(x= NULL, y = "Period Correction", fill = "")+
+  theme_bw() +
+  adam_plot_specs +
+  ylim(NA, 0.2) +
+  guides(fill = "none") + 
+  theme(axis.text.x = element_blank())
+
+
+Joint_Delta_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Delta, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Delta, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Delta, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightblue','blue','royalblue')) +
+  labs(x= NULL, y = "Temporal Prediction", fill = "")+
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none") + 
+  theme(axis.text.x = element_blank())
+
+
+Joint_Gamma_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Gamma, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Gamma, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Gamma, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgreen','darkgreen','seagreen')) +
+  labs(x= NULL, y = "Anticipatory Correction", fill = "")+
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none") + 
+  theme(axis.text.x = element_blank())
+
+Joint_Tn_plot <- all_data %>%
+  mutate(Musicians_Present = fct_relevel(Musicians_Present, "12", "13", "23")) %>%
+  ggplot(aes(y = Joint_Tn, x = Musicians_Present, fill = Musicians_Present, show.legend = TRUE)) +
+  geom_flat_violin(position = position_nudge(x = .13, y = 0), alpha = .8) +
+  geom_point(aes(y = Joint_Tn, x = Musicians_Present, fill = Musicians_Present), position=position_jitterdodge(jitter.width=0.05, dodge.width=0.1), shape = 21, size = 4, color = "black", alpha = 0.5, show.legend = FALSE) +
+  geom_boxplot(aes(y = Joint_Tn, x = Musicians_Present, fill = Musicians_Present), position = position_dodgenudge(x=-.2), width = .25, outlier.shape = NA, alpha = 0.5, show.legend = FALSE) +
+  expand_limits(x = 2) +
+  #guides(fill = "none") +
+  #guides(color = "none") +
+  scale_fill_manual(values=c('lightgrey','darkgrey','black')) +
+  labs(x="Pair", y = "Timekeeper Noise", fill = "")+
+  scale_x_discrete("Pair", labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  theme_bw() +
+  adam_plot_specs +
+  guides(fill = "none")
+
+# Adaptation only plot
+ADAM_Joint_Plot <- ggarrange(Joint_Beta_plot, Joint_Delta_plot, 
+                             Joint_Gamma_plot, Joint_Tn_plot,
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Joint_Plot
+ADAM_Joint_Plot <- ADAM_Joint_Plot %>% annotate_figure(top = text_grob("Joint Model", color = "Black", face = "bold", size = 24))
+ADAM_Joint_Plot
+```
+
+### Combine Plots
+
+```{r}
+ADAM_Split_Full_Plot <- ggarrange(ADAM_Adapt_Plot, ADAM_Joint_Plot, ncol = 2, nrow = 1)
+ADAM_Split_Full_Plot
+ADAM_Split_Full_Plot <- ADAM_Split_Full_Plot %>% annotate_figure(top = text_grob("ADAM Parameters - Pairwise", color = "Black", face = "bold", size = 40))
+ADAM_Split_Full_Plot
+```
+
+# PLOT NOT PAIRWISE
+
+```{r}
+Adapt_Alpha_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Alpha)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'red', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'red', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'red', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Phase Correction" #Phase Correction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Adapt_Beta_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Beta)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'orange', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'orange', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'orange', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Period Correction" #Period Correction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Adapt_Tn_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Tn)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'grey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'grey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'grey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Timekeeper Noise" #Timekeeper Noise
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Adapt_Mn_plot <- all_data %>%
+  ggplot(aes(x = "", y = Adapt_Mn)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'grey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'grey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'grey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Motor Noise" #Motor Noise
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+# Adaptation only plot
+ADAM_Adapt_Plot_Com <- ggarrange(Adapt_Alpha_plot, Adapt_Beta_plot, 
+                             Adapt_Tn_plot, Adapt_Mn_plot,  
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Adapt_Plot_Com
+ADAM_Adapt_Plot_Com <- ADAM_Adapt_Plot_Com %>% annotate_figure(top = text_grob("Adaptation Only Model", color = "Black", face = "bold", size = 24))
+ADAM_Adapt_Plot_Com
+```
+
+```{r}
+Joint_Beta_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Beta)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'orange', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'orange', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'orange', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Period Correction" #Period Correction
+  ) +
+  theme_bw() +
+  ylim(NA, 0.2) +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Joint_Delta_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Delta)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'blue', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'blue', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'blue', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Temporal Prediction" #Temporal Prediction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Joint_Gamma_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Gamma)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'darkgreen', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'darkgreen', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'darkgreen', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Anticipatory Correction" #Anticipatory Correction
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+Joint_Tn_plot <- all_data %>%
+  ggplot(aes(x = "", y = Joint_Tn)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'grey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'grey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'grey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Timekeeper Noise" #Timekeeper Noise
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+
+# Adaptation only plot
+ADAM_Joint_Plot_Com <- ggarrange(Joint_Beta_plot, Joint_Delta_plot, 
+                             Joint_Gamma_plot, Joint_Tn_plot,
+                             label.x = c(-.001, -.001, -.001, -.001),
+                             label.y = c(1.03, 1.03, 1.03, 1.03),
+                             font.label=list(color="black",size=24),
+                             ncol = 1, nrow = 4
+)
+ADAM_Joint_Plot_Com
+ADAM_Joint_Plot_Com <- ADAM_Joint_Plot_Com %>% annotate_figure(top = text_grob("Joint Model", color = "Black", face = "bold", size = 24))
+ADAM_Joint_Plot_Com
+```
+### Combine Plots
+
+```{r}
+ADAM_Full_Plot <- ggarrange(ADAM_Adapt_Plot_Com, ADAM_Joint_Plot_Com, ncol = 2, nrow = 1)
+ADAM_Full_Plot
+ADAM_Full_Plot <- ADAM_Full_Plot %>% annotate_figure(top = text_grob("ADAM Parameters", color = "Black", face = "bold", size = 40))
+ADAM_Full_Plot
+```
+
+```{r}
+ADAM_ComAdapt_Plot <- ggarrange(ADAM_Adapt_Plot, ADAM_Adapt_Plot_Com, ncol = 2, nrow = 1)
+ADAM_ComAdapt_Plot
+ADAM_ComAdapt_Plot <- ADAM_ComAdapt_Plot %>% annotate_figure(top = text_grob("ADAM Adapt Parameters", color = "Black", face = "bold", size = 40))
+ADAM_ComAdapt_Plot
+```
+
+```{r}
+ADAM_ComJoint_Plot <- ggarrange(ADAM_Joint_Plot, ADAM_Joint_Plot_Com, ncol = 2, nrow = 1)
+ADAM_ComJoint_Plot
+ADAM_ComJoint_Plot <- ADAM_ComJoint_Plot %>% annotate_figure(top = text_grob("ADAM Joint Parameters", color = "Black", face = "bold", size = 40))
+ADAM_ComJoint_Plot
+```
+
+```{r}
+ADAM_Com_Plot <- ggarrange(ADAM_ComAdapt_Plot, ADAM_ComJoint_Plot, ncol = 2, nrow = 1)
+ADAM_Com_Plot
+ADAM_Com_Plot <- ADAM_Com_Plot %>% annotate_figure(top = text_grob("", color = "Black", face = "bold", size = 40))
+ADAM_Com_Plot
+```

@@ -1,0 +1,645 @@
+---
+title: "Thesis ADAM Analysis 1"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Compiling data, restructuring, and plotting asynchronies
+
+ADAM model parameter estimates were computed in Matlab script:
+
+ThesisADAM_boundedresults.m Output is one file which includes participant and condition identifiers, a
+range of performance measures, and parameter estimates for the
+'Adaptation-only' and 'Full' versions of ADAM. Log-likelihood estimates
+are also included for each model version, indicating quality of model
+fit to data (higher values [less -vs/more +ve] mean better fit)
+
+Adaptation-only version includes estimates of: 
+- Phase Correction ('Adapt_Alpha') 
+- Period Correction ('Adapt_Beta') 
+- Timekeeper Noise ('Adapt_Tn') 
+- Motor Noise ('Adapt_Mn')
+
+Joint version of ADAM includes estimates of: 
+- Period correction ('Joint_Beta') 
+- Temporal Prediction ('Joint_Delta') 
+- Anticipatory Error Correction ('Joint_Gamma') 
+- Timekeeper Noise ('Joint_Tn')
+
+Note that the ADAM parameter estimation procedure is run twice per data
+set with TARGET musician (the one for which parameters are being
+estimated) and REFERENCE musician (the one for which parameters are NOT
+being estimated) swapped so estimates are given for each musician.
+
+### Set directory where to read and write files
+
+```{r}
+setwd("C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis") # NEED TO SET TO CURRENT PATH
+```
+
+### Load libraries
+
+```{r}
+library(bestNormalize)
+library(caret)
+library(dplyr)
+library(emmeans)
+library(flextable)
+library(ggeffects)
+library(ggplot2)
+library(ggpp) # for jitternudge [not currently used]
+library(ggpubr)
+library(ggsci) # For Raincloud plots
+library(grid)
+library(gridExtra)
+library(gtools)
+library(huxtable)
+library(broom.mixed)
+library(lme4) # For lmer
+library(lmerTest) # Alternative for lmer that gives p-values/asterisks. Automatically updates output of lmer (just load here, no need to call below) 
+library(reshape2)
+library(rstatix)
+library(stats) # For confint
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library(CRSSIO) # This has additional custom editing features for boxplot
+```
+
+### SD of signed asynchronies
+
+```{r}
+DV_Async <- as.symbol('SD_Signed_Async')
+```
+
+### Extract ID, Song, Artist, N_Events, Mean ITI, & CV ITI info for each sequence (for reporting in table) for both conditions
+
+```{r}
+all_data <- read_excel("C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/ThesisADAM_boundedresults.xlsx")
+all_data <- all_data %>% mutate_all(~ifelse(is.nan(.), NA, .)) # Convert NaNs to NA
+all_data$DV_Async <- all_data[[DV_Async]]
+
+# Extract Pair, Code, `Lead/Phrase, N_Events, Mean ITI, & CV ITI info for each sequence (for reporting in table)
+all_info <- all_data[1:(nrow(all_data)), c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N_Events', 'Mn_ITI', 'CV_ITI')]
+colnames(all_info) <- c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N events', 'Mean Interval (s)', 'CV Interval (prop.)')
+```
+
+### Make table
+
+```{r}
+# Order the table
+all_info_order <- all_info[order(all_info$ID, all_info$Song, all_info$Artist), ]
+
+# Format as a flextable
+all_info.ft <- flextable(all_info_order)
+all_info.ft <- colformat_double(all_info.ft, digits = 2)
+
+# Export to Word document
+save_as_docx(all_info.ft, path = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 1/Results/Sequence_Info_Unfiltered.docx")
+```
+
+### Filter information table for each section for outliers
+
+```{r}
+# FILTER REAL CONDITION
+# Add column to indicate outliers based on asynchronies
+all_data$Outlier_Async <- 0
+outCrit <- 3 # Set outlier criterion: How many times IQR
+
+all_data$DV_Async <- as.numeric(as.character(all_data$DV_Async))
+qnt <- quantile(all_data$DV_Async, probs=c(.25, .75), na.rm = TRUE)
+H <- outCrit * IQR(all_data$DV_Async, na.rm = TRUE)
+y <- all_data$Outlier_Async
+y[all_data$DV_Async < (qnt[1] - H)] <- 1
+y[all_data$DV_Async > (qnt[2] + H)] <- 1
+y
+all_data$Outlier_Async <- y
+
+# Add column to indicate outliers based on temporal prediction (delta)
+all_data$Outlier_Alpha <- 0
+
+all_data$Adapt_Alpha <- as.numeric(as.character(all_data$Adapt_Alpha))
+qntA <- quantile(all_data$Adapt_Alpha, probs=c(.25, .75), na.rm = TRUE)
+HA <- outCrit * IQR(all_data$Adapt_Alpha, na.rm = TRUE)
+yA <- all_data$Outlier_Alpha
+yA[all_data$Adapt_Alpha < (qntA[1] - HA)] <- 1
+yA[all_data$Adapt_Alpha > (qntA[2] + HA)] <- 1
+yA
+all_data$Outlier_Alpha <- yA
+
+# Add column to indicate outliers based on temporal prediction (delta)
+all_data$Outlier_Delta <- 0
+
+all_data$Joint_Delta <- as.numeric(as.character(all_data$Joint_Delta))
+qntD <- quantile(all_data$Joint_Delta, probs=c(.25, .75), na.rm = TRUE)
+HD <- outCrit * IQR(all_data$Joint_Delta, na.rm = TRUE)
+yD <- all_data$Outlier_Delta
+yD[all_data$Joint_Delta < (qntD[1] - HD)] <- 1
+yD[all_data$Joint_Delta > (qntD[2] + HD)] <- 1
+yD
+all_data$Outlier_Delta <- yD
+
+# Filter First ('REAL') data based on Asynchrony &/or Delta outliers
+all_dataF <- all_data %>% filter(Outlier_Async == 0 & Outlier_Alpha == 0 & Outlier_Delta == 0) # Option filtering Aync, Alpha & Delta outliers
+# first_dataF <- dyad_data %>% filter(Outlier_Delta == 0) # Option filtering only Delta outliers
+all_data <- all_dataF # COMMENT OUT IF FILTERING NOT WANTED
+```
+
+### Combine the information to a combined, filtered info table (in this case no values were filtered)
+
+```{r}
+# Extract relevant info for reporting
+all_info_filt <- all_data[, c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N_Events', 'Mn_ITI', 'CV_ITI')]
+colnames(all_info_filt) <- c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N_Events', 'Mn_ITI', 'CV_ITI')
+
+# Order rows for cleaner display
+all_info_filt_order <- all_info_filt[order(all_info_filt$ID, all_info_filt$Song, all_info_filt$Artist), ]
+
+# Format with flextable
+library(flextable)
+all_info_filt.ft <- flextable(all_info_filt_order)
+all_info_filt.ft <- colformat_double(all_info_filt.ft, digits = 2)
+
+# Save the table as a Word document
+save_as_docx(all_info_filt.ft, path = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 1/Results/Sequence_Info_Filtered.docx")
+```
+
+### Create individual columns for each original experimental variable (Visual Contact, Leadership, and Piece)
+
+```{r}
+all_data <- all_data %>%
+  mutate(
+    Flipped = substr(ID, 1, 1),  # Assuming the first digit is Factor1
+    MusicianA = substr(ID, 2, 2),  # Second digit for Factor2
+    MusicianB = substr(ID, 3, 3))   # Third digit for Factor3
+```
+
+### Make sure all the necessary values are numeric
+
+```{r}
+# Make sure variables are numeric
+all_data <- all_data %>%
+  mutate(across(c(DV_Async, Mn_ITI, SD_ITI, CV_ITI, Adapt_Alpha, Adapt_Beta, Adapt_Tn, Adapt_Mn, Adapt_LLE,
+                  Joint_Beta, Joint_Delta, Joint_Gamma, Joint_Tn, Joint_LLE, N_Events), as.numeric))
+```
+
+### Get means for plotting original data
+
+```{r}
+# Averages across original & reverse (target & reference), visual contact condition as well as Pair
+all_data_pairs <- all_data %>% group_by(Song, Artist, MusicianA, MusicianB) %>% summarise_at(vars(DV_Async, Mn_ITI,SD_ITI,CV_ITI,
+                                                                             Adapt_Alpha,Adapt_Beta,Adapt_Tn,Adapt_Mn,Adapt_LLE, Joint_Beta,Joint_Delta,Joint_Gamma,Joint_Tn,Joint_LLE, N_Events), mean, na.rm = TRUE)
+
+all_data_pairs <- all_data_pairs %>%
+  mutate(Pair_Label = case_when(
+    (MusicianA == 1 & MusicianB == 2) ~ "12",
+    (MusicianA == 1 & MusicianB == 3) ~ "13",
+    (MusicianA == 2 & MusicianB == 3) ~ "23",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(Pair_Label))
+
+# Averages across original & reverse (target & reference) 
+all_data_group <- all_data %>% group_by(Song, Artist) %>% summarise_at(vars(DV_Async, Mn_ITI,SD_ITI,CV_ITI,
+                                                                                            Adapt_Alpha,Adapt_Beta,Adapt_Tn,Adapt_Mn,Adapt_LLE, Joint_Beta,Joint_Delta,Joint_Gamma,Joint_Tn,Joint_LLE, N_Events), mean, na.rm = TRUE)
+
+```
+
+### Plot asynchronies
+
+```{r}
+# Set theme
+raincloud_theme = theme(
+  panel.background = element_rect(fill = NA, color = "black", linewidth = 1), # Change size to linewidth
+  text = element_text(size = 24),
+  axis.title.x = element_text(size = 24, vjust = 0, margin = margin(b = 5, t = 5)),
+  axis.title.y = element_text(size = 24, vjust = 2, margin = margin(l = 5, r = 3)),
+  axis.text = element_text(size = 20, color = 'black'),
+  #axis.text.x = element_text(angle = 45, vjust = 0.5),
+  legend.title = element_text(size = 20),
+  legend.text = element_text(size = 20),
+  legend.position = "top",
+  plot.title = element_text(lineheight = .8, face = "bold", size = 24),
+  panel.border = element_blank(),
+  panel.grid.minor = element_blank(),
+  panel.grid.major = element_blank(),
+  axis.line.x = element_line(colour = 'black', linewidth = 0.5, linetype = 'solid'), # Change size to linewidth
+  axis.line.y = element_line(colour = 'black', linewidth = 0.5, linetype = 'solid'), # Change size to linewidth
+  plot.margin = margin(12, 6, 6, 6, "pt")) # t, r, b, l - For Portrait
+  
+# Asynchrony plot for all trials
+Pair_plot <- all_data_pairs %>%  # Replace with your actual data frame name
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23"))) %>%
+  ggplot(aes(y = DV_Async, x = Pair_Label, fill = Pair_Label)) +
+  geom_flat_violin(position = position_nudge(.15), alpha = .8) +
+  geom_point(position = position_jitter(.05), shape = 21, size = 4, color = "black", alpha = 0.5) +
+  geom_boxplot(position = position_nudge(-.2), width = .2, outlier.shape = NA, alpha = 0.5) +
+  expand_limits(x = 2) +
+  scale_fill_manual(values = rep('darkgrey', 3)) +
+  labs(x = "Performance Pair", y = "Asynchrony (s)") +
+  scale_x_discrete(labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  ggtitle("Pair-Based Asynchrony") +
+  theme_bw() +
+  raincloud_theme + 
+  theme(legend.position = "none")
+
+Group_plot <- all_data_group %>%
+  ggplot(aes(x = "", y = DV_Async)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'darkgrey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'darkgrey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'darkgrey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Asynchrony (Beats)",
+    title = "Group Asynchrony"
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+#Combine both plots for output
+Asynchrony_Plot <- ggarrange(Pair_plot, Group_plot, 
+                                  labels = c("A", "B"),
+                                  label.x = c(-.001, -.001),
+                                  label.y = c(1.02, 1.02),
+                                  font.label=list(color="black",size=20),
+                                  ncol = 1, nrow = 2)
+Asynchrony_Plot
+```
+
+# TEMPO NORMALIZED ASYNCHRONIES
+### SD of signed asynchronies
+
+```{r}
+Norm_DV_Async <- as.symbol('Norm_SD_Signed_Async')
+```
+
+### Extract Pair, Code, \`Lead/Phrase, N_Events, Mean ITI, & CV ITI info for each sequence (for reporting in table) for both conditions
+
+```{r}
+norm_all_data <- read_excel("C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/ThesisADAM_boundedresults.xlsx")
+norm_all_data <- norm_all_data %>% mutate_all(~ifelse(is.nan(.), NA, .)) # Convert NaNs to NA
+norm_all_data$Norm_DV_Async <- norm_all_data[[Norm_DV_Async]]
+
+# Extract Pair, Code, `Lead/Phrase, N_Events, Mean ITI, & CV ITI info for each sequence (for reporting in table)
+norm_all_info <- norm_all_data[1:(nrow(norm_all_data)), c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N_Events', 'Mn_ITI', 'CV_ITI')]
+colnames(norm_all_info) <- c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N events', 'Mean Interval (s)', 'CV Interval (prop.)')
+
+```
+
+### Make table
+
+```{r}
+# Order the table
+norm_all_info_order <- norm_all_info[order(norm_all_info$ID, norm_all_info$Song, norm_all_info$Artist), ]
+
+# Format as a flextable
+norm_all_info.ft <- flextable(norm_all_info_order)
+norm_all_info.ft <- colformat_double(norm_all_info.ft, digits = 2)
+
+# Export to Word document
+save_as_docx(norm_all_info.ft, path = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 1/Results/Norm_Sequence_Info_Unfiltered.docx")
+```
+
+### Filter information table for each section for outliers
+
+```{r}
+# FILTER REAL CONDITION
+# Add column to indicate outliers based on asynchronies
+norm_all_data$Outlier_Async <- 0
+outCrit <- 3 # Set outlier criterion: How many times IQR
+
+norm_all_data$Norm_DV_Async <- as.numeric(as.character(norm_all_data$Norm_DV_Async))
+qnt <- quantile(norm_all_data$Norm_DV_Async, probs=c(.25, .75), na.rm = TRUE)
+H <- outCrit * IQR(norm_all_data$Norm_DV_Async, na.rm = TRUE)
+y <- norm_all_data$Outlier_Async
+y[norm_all_data$Norm_DV_Async < (qnt[1] - H)] <- 1
+y[norm_all_data$Norm_DV_Async > (qnt[2] + H)] <- 1
+y
+norm_all_data$Outlier_Async <- y
+
+# Add column to indicate outliers based on temporal prediction (delta)
+norm_all_data$Outlier_Alpha <- 0
+
+norm_all_data$Adapt_Alpha <- as.numeric(as.character(norm_all_data$Adapt_Alpha))
+qntA <- quantile(norm_all_data$Adapt_Alpha, probs=c(.25, .75), na.rm = TRUE)
+HA <- outCrit * IQR(norm_all_data$Adapt_Alpha, na.rm = TRUE)
+yA <- norm_all_data$Outlier_Alpha
+yA[norm_all_data$Adapt_Alpha < (qntA[1] - HA)] <- 1
+yA[norm_all_data$Adapt_Alpha > (qntA[2] + HA)] <- 1
+yA
+norm_all_data$Outlier_Alpha <- yA
+
+# Add column to indicate outliers based on temporal prediction (delta)
+norm_all_data$Outlier_Delta <- 0
+
+norm_all_data$Joint_Delta <- as.numeric(as.character(norm_all_data$Joint_Delta))
+qntD <- quantile(norm_all_data$Joint_Delta, probs=c(.25, .75), na.rm = TRUE)
+HD <- outCrit * IQR(norm_all_data$Joint_Delta, na.rm = TRUE)
+yD <- norm_all_data$Outlier_Delta
+yD[norm_all_data$Joint_Delta < (qntD[1] - HD)] <- 1
+yD[norm_all_data$Joint_Delta > (qntD[2] + HD)] <- 1
+yD
+norm_all_data$Outlier_Delta <- yD
+
+# Filter First ('REAL') data based on Asynchrony &/or Delta outliers
+norm_all_dataF <- norm_all_data %>% filter(Outlier_Async == 0 & Outlier_Alpha == 0 & Outlier_Delta == 0) # Option filtering Aync, Alpha & Delta outliers
+# first_dataF <- dyad_data %>% filter(Outlier_Delta == 0) # Option filtering only Delta outliers
+norm_all_data <- norm_all_dataF # COMMENT OUT IF FILTERING NOT WANTED
+```
+
+### Combine the information to a combined, filtered info table (in this case no values were filtered)
+
+```{r}
+# Extract relevant info for reporting
+norm_all_info_filt <- norm_all_data[, c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N_Events', 'Mn_ITI', 'CV_ITI')]
+colnames(norm_all_info_filt) <- c('ID', 'Song', 'Artist', 'Tempo', 'IOI Entropy', 'N_Events', 'Mn_ITI', 'CV_ITI')
+
+# Order rows for cleaner display
+norm_all_info_filt_order <- norm_all_info_filt[order(norm_all_info_filt$ID, norm_all_info_filt$Song, norm_all_info_filt$Artist), ]
+
+# Format with flextable
+library(flextable)
+norm_all_info_filt.ft <- flextable(norm_all_info_filt_order)
+norm_all_info_filt.ft <- colformat_double(norm_all_info_filt.ft, digits = 2)
+
+# Save the table as a Word document
+save_as_docx(all_info_filt.ft, path = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 1/Results/Norm_Sequence_Info_Filtered.docx")
+```
+
+### Create individual columns for each original experimental variable (Visual Contact, Leadership, and Piece)
+
+```{r}
+norm_all_data <- norm_all_data %>%
+  mutate(
+    Flipped = substr(ID, 1, 1),  # Assuming the first digit is Factor1
+    MusicianA = substr(ID, 2, 2),  # Second digit for Factor2
+    MusicianB = substr(ID, 3, 3))   # Third digit for Factor3
+```
+
+### Make sure all the necessary values are numeric
+
+```{r}
+# Make sure variables are numeric
+norm_all_data <- norm_all_data %>%
+  mutate(across(c(Norm_DV_Async, Mn_ITI, SD_ITI, CV_ITI, Adapt_Alpha, Adapt_Beta, Adapt_Tn, Adapt_Mn, Adapt_LLE,
+                  Joint_Beta, Joint_Delta, Joint_Gamma, Joint_Tn, Joint_LLE, N_Events), as.numeric))
+```
+
+### Get means for plotting original data
+
+```{r}
+# Averages across original & reverse (target & reference), visual contact condition as well as Pair
+norm_all_data_pairs <- norm_all_data %>% group_by(Song, Artist, MusicianA, MusicianB) %>% summarise_at(vars(Norm_DV_Async, Mn_ITI,SD_ITI,CV_ITI,
+                                                                             Adapt_Alpha,Adapt_Beta,Adapt_Tn,Adapt_Mn,Adapt_LLE, Joint_Beta,Joint_Delta,Joint_Gamma,Joint_Tn,Joint_LLE, N_Events), mean, na.rm = TRUE)
+
+norm_all_data_pairs <- norm_all_data_pairs %>%
+  mutate(Pair_Label = case_when(
+    (MusicianA == 1 & MusicianB == 2) ~ "12",
+    (MusicianA == 1 & MusicianB == 3) ~ "13",
+    (MusicianA == 2 & MusicianB == 3) ~ "23",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(Pair_Label))
+
+# Averages across original & reverse (target & reference) 
+norm_all_data_group <- norm_all_data %>% group_by(Song, Artist) %>% summarise_at(vars(Norm_DV_Async, Mn_ITI,SD_ITI,CV_ITI,
+                                                                                            Adapt_Alpha,Adapt_Beta,Adapt_Tn,Adapt_Mn,Adapt_LLE, Joint_Beta,Joint_Delta,Joint_Gamma,Joint_Tn,Joint_LLE, N_Events), mean, na.rm = TRUE)
+
+```
+
+### Plot asynchronies in 2x2 design (pairs for first and second eight x visual contact)
+
+```{r}
+# Set theme
+raincloud_theme = theme(
+  panel.background = element_rect(fill = NA, color = "black", linewidth = 1), # Change size to linewidth
+  text = element_text(size = 24),
+  axis.title.x = element_text(size = 24, vjust = 0, margin = margin(b = 5, t = 5)),
+  axis.title.y = element_text(size = 24, vjust = 2, margin = margin(l = 5, r = 3)),
+  axis.text = element_text(size = 20, color = 'black'),
+  #axis.text.x = element_text(angle = 45, vjust = 0.5),
+  legend.title = element_text(size = 20),
+  legend.text = element_text(size = 20),
+  legend.position = "top",
+  plot.title = element_text(lineheight = .8, face = "bold", size = 24),
+  panel.border = element_blank(),
+  panel.grid.minor = element_blank(),
+  panel.grid.major = element_blank(),
+  axis.line.x = element_line(colour = 'black', linewidth = 0.5, linetype = 'solid'), # Change size to linewidth
+  axis.line.y = element_line(colour = 'black', linewidth = 0.5, linetype = 'solid'), # Change size to linewidth
+  plot.margin = margin(12, 6, 6, 6, "pt")) # t, r, b, l - For Portrait
+  
+# Asynchrony plot for all trials
+Norm_Pair_plot <- norm_all_data_pairs %>%  # Replace with your actual data frame name
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23"))) %>%
+  ggplot(aes(y = Norm_DV_Async, x = Pair_Label, fill = Pair_Label)) +
+  geom_flat_violin(position = position_nudge(.15), alpha = .8) +
+  geom_point(position = position_jitter(.05), shape = 21, size = 4, color = "black", alpha = 0.5) +
+  geom_boxplot(position = position_nudge(-.2), width = .2, outlier.shape = NA, alpha = 0.5) +
+  expand_limits(x = 2) +
+  scale_fill_manual(values = rep('darkgrey', 3)) +
+  labs(x = "Performance Pair", y = "Asynchrony (s)") +
+  scale_x_discrete(labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  ggtitle("Pair-Based Asynchrony - Tempo Normalized") +
+  theme_bw() +
+  raincloud_theme + 
+  theme(legend.position = "none")
+
+Norm_Group_plot <- norm_all_data_group %>%
+  ggplot(aes(x = "", y = Norm_DV_Async)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'darkgrey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'darkgrey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'darkgrey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Asynchrony (s)",
+    title = "Group Asynchrony - Tempo Normalized"
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+#Combine both plots for output
+Norm_Asynchrony_Plot <- ggarrange(Norm_Pair_plot, Norm_Group_plot, 
+                                  labels = c("A", "B"),
+                                  label.x = c(-.001, -.001),
+                                  label.y = c(1.02, 1.02),
+                                  font.label=list(color="black",size=20),
+                                  ncol = 1, nrow = 2)
+Norm_Asynchrony_Plot
+```
+
+```{r}
+set.seed(2001)
+#Check normality
+ntesta1 <- norm_all_data %>% shapiro_test(Norm_DV_Async)
+ntesta1
+
+#Determine best method for transformation
+bestNormalize(norm_all_data$Norm_DV_Async) #Order Norm
+
+#Complete transforation and check normality for improvement
+Norm_DV_Async_ON <- bestNormalize(norm_all_data$Norm_DV_Async)
+norm_all_data$Norm_DV_Async_ON <- predict(Norm_DV_Async_ON, norm_all_data$Norm_DV_Async)
+ntestLLE <- norm_all_data %>% shapiro_test(Norm_DV_Async_ON) 
+ntestLLE
+```
+
+#  TRANSFORMED TEMPO NORMALIZED ASYNCHRONIES
+### Filter information table for each section for outliers
+
+```{r}
+# FILTER REAL CONDITION
+# Add column to indicate outliers based on asynchronies
+norm_all_data$Outlier_Async <- 0
+outCrit <- 3 # Set outlier criterion: How many times IQR
+
+norm_all_data$Norm_DV_Async_ON <- as.numeric(as.character(norm_all_data$Norm_DV_Async_ON))
+qnt <- quantile(norm_all_data$Norm_DV_Async_ON, probs=c(.25, .75), na.rm = TRUE)
+H <- outCrit * IQR(norm_all_data$Norm_DV_Async_ON, na.rm = TRUE)
+y <- norm_all_data$Outlier_Async
+y[norm_all_data$Norm_DV_Async_ON < (qnt[1] - H)] <- 1
+y[norm_all_data$Norm_DV_Async_ON > (qnt[2] + H)] <- 1
+y
+norm_all_data$Outlier_Async <- y
+
+# Add column to indicate outliers based on temporal prediction (delta)
+norm_all_data$Outlier_Alpha <- 0
+
+norm_all_data$Adapt_Alpha <- as.numeric(as.character(norm_all_data$Adapt_Alpha))
+qntA <- quantile(norm_all_data$Adapt_Alpha, probs=c(.25, .75), na.rm = TRUE)
+HA <- outCrit * IQR(norm_all_data$Adapt_Alpha, na.rm = TRUE)
+yA <- norm_all_data$Outlier_Alpha
+yA[norm_all_data$Adapt_Alpha < (qntA[1] - HA)] <- 1
+yA[norm_all_data$Adapt_Alpha > (qntA[2] + HA)] <- 1
+yA
+norm_all_data$Outlier_Alpha <- yA
+
+# Add column to indicate outliers based on temporal prediction (delta)
+norm_all_data$Outlier_Delta <- 0
+
+norm_all_data$Joint_Delta <- as.numeric(as.character(norm_all_data$Joint_Delta))
+qntD <- quantile(norm_all_data$Joint_Delta, probs=c(.25, .75), na.rm = TRUE)
+HD <- outCrit * IQR(norm_all_data$Joint_Delta, na.rm = TRUE)
+yD <- norm_all_data$Outlier_Delta
+yD[norm_all_data$Joint_Delta < (qntD[1] - HD)] <- 1
+yD[norm_all_data$Joint_Delta > (qntD[2] + HD)] <- 1
+yD
+norm_all_data$Outlier_Delta <- yD
+
+# Filter First ('REAL') data based on Asynchrony &/or Delta outliers
+norm_all_dataF <- norm_all_data %>% filter(Outlier_Async == 0 & Outlier_Alpha == 0 & Outlier_Delta == 0) # Option filtering Aync, Alpha & Delta outliers
+# first_dataF <- dyad_data %>% filter(Outlier_Delta == 0) # Option filtering only Delta outliers
+norm_all_data <- norm_all_dataF # COMMENT OUT IF FILTERING NOT WANTED
+```
+
+### Make sure all the necessary values are numeric
+
+```{r}
+# Make sure variables are numeric
+norm_all_data <- norm_all_data %>%
+  mutate(across(c(Norm_DV_Async_ON, Mn_ITI, SD_ITI, CV_ITI, Adapt_Alpha, Adapt_Beta, Adapt_Tn, Adapt_Mn, Adapt_LLE,
+                  Joint_Beta, Joint_Delta, Joint_Gamma, Joint_Tn, Joint_LLE, N_Events), as.numeric))
+```
+
+### Get means for plotting original data
+
+```{r}
+# Averages across original & reverse (target & reference), visual contact condition as well as Pair
+norm_all_data_pairs <- norm_all_data %>% group_by(Song, Artist, MusicianA, MusicianB) %>% summarise_at(vars(Norm_DV_Async_ON, Mn_ITI,SD_ITI,CV_ITI,
+                                                                             Adapt_Alpha,Adapt_Beta,Adapt_Tn,Adapt_Mn,Adapt_LLE, Joint_Beta,Joint_Delta,Joint_Gamma,Joint_Tn,Joint_LLE, N_Events), mean, na.rm = TRUE)
+
+norm_all_data_pairs <- norm_all_data_pairs %>%
+  mutate(Pair_Label = case_when(
+    (MusicianA == 1 & MusicianB == 2) ~ "12",
+    (MusicianA == 1 & MusicianB == 3) ~ "13",
+    (MusicianA == 2 & MusicianB == 3) ~ "23",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(Pair_Label))
+
+# Averages across original & reverse (target & reference) 
+norm_all_data_group <- norm_all_data %>% group_by(Song, Artist) %>% summarise_at(vars(Norm_DV_Async_ON, Mn_ITI,SD_ITI,CV_ITI,
+                                                                                            Adapt_Alpha,Adapt_Beta,Adapt_Tn,Adapt_Mn,Adapt_LLE, Joint_Beta,Joint_Delta,Joint_Gamma,Joint_Tn,Joint_LLE, N_Events), mean, na.rm = TRUE)
+
+```
+
+### Plot asynchronies in 2x2 design (pairs for first and second eight x visual contact)
+
+```{r}
+# Set theme
+raincloud_theme = theme(
+  panel.background = element_rect(fill = NA, color = "black", linewidth = 1), # Change size to linewidth
+  text = element_text(size = 24),
+  axis.title.x = element_text(size = 24, vjust = 0, margin = margin(b = 5, t = 5)),
+  axis.title.y = element_text(size = 24, vjust = 2, margin = margin(l = 5, r = 3)),
+  axis.text = element_text(size = 20, color = 'black'),
+  #axis.text.x = element_text(angle = 45, vjust = 0.5),
+  legend.title = element_text(size = 20),
+  legend.text = element_text(size = 20),
+  legend.position = "top",
+  plot.title = element_text(lineheight = .8, face = "bold", size = 24),
+  panel.border = element_blank(),
+  panel.grid.minor = element_blank(),
+  panel.grid.major = element_blank(),
+  axis.line.x = element_line(colour = 'black', linewidth = 0.5, linetype = 'solid'), # Change size to linewidth
+  axis.line.y = element_line(colour = 'black', linewidth = 0.5, linetype = 'solid'), # Change size to linewidth
+  plot.margin = margin(12, 6, 6, 6, "pt")) # t, r, b, l - For Portrait
+  
+# Asynchrony plot for all trials
+Norm_Pair_plot <- norm_all_data_pairs %>%  # Replace with your actual data frame name
+  mutate(Pair_Label = factor(Pair_Label, levels = c("12", "13", "23"))) %>%
+  ggplot(aes(y = Norm_DV_Async_ON, x = Pair_Label, fill = Pair_Label)) +
+  geom_flat_violin(position = position_nudge(.15), alpha = .8) +
+  geom_point(position = position_jitter(.05), shape = 21, size = 4, color = "black", alpha = 0.5) +
+  geom_boxplot(position = position_nudge(-.2), width = .2, outlier.shape = NA, alpha = 0.5) +
+  expand_limits(x = 2) +
+  scale_fill_manual(values = rep('darkgrey', 3)) +
+  labs(x = "Performance Pair", y = "Asynchrony (OrderNorm)") +
+  scale_x_discrete(labels = c("Piano and Bass", "Piano and Drums", "Bass and Drums")) +
+  ggtitle("Pair-Based Asynchrony - Normalized & Transformed") +
+  theme_bw() +
+  raincloud_theme + 
+  theme(legend.position = "none")
+
+Norm_Group_plot <- norm_all_data_group %>%
+  ggplot(aes(x = "", y = Norm_DV_Async_ON)) +
+  geom_flat_violin(position = position_nudge(x = 0.15), fill = 'darkgrey', alpha = 0.8) +
+  geom_point(position = position_jitter(width = 0.05), shape = 21, size = 4,
+             color = "black", fill = 'darkgrey', alpha = 0.6) +
+  geom_boxplot(position = position_nudge(x = -0.2), width = 0.2,
+               outlier.shape = NA, fill = 'darkgrey', alpha = 0.5) +
+  labs(
+    x = NULL,
+    y = "Asynchrony (OrderNorm)",
+    title = "Group Asynchrony - Normalized & Transformed"
+  ) +
+  theme_bw() +
+  raincloud_theme +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+#Combine both plots for output
+Norm_Asynchrony_Plot <- ggarrange(Norm_Pair_plot, Norm_Group_plot, 
+                                  labels = c("A", "B"),
+                                  label.x = c(-.001, -.001),
+                                  label.y = c(1.02, 1.02),
+                                  font.label=list(color="black",size=20),
+                                  ncol = 1, nrow = 2)
+Norm_Asynchrony_Plot
+```

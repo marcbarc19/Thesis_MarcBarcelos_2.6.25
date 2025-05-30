@@ -1,0 +1,264 @@
+---
+title: "Thesis ADAM Analysis 5"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# ADAM Log-Likelihood Estimates
+
+ADAM model parameter estimates were computed in Matlab script:
+
+ThesisADAM_boundedresults.m Output is one file which includes participant and condition identifiers, a
+range of performance measures, and parameter estimates for the
+'Adaptation-only' and 'Full' versions of ADAM. Log-likelihood estimates
+are also included for each model version, indicating quality of model
+fit to data (higher values [less -vs/more +ve] mean better fit)
+
+Adaptation-only version includes estimates of: 
+- Phase Correction ('Adapt_Alpha') 
+- Period Correction ('Adapt_Beta') 
+- Timekeeper Noise ('Adapt_Tn') 
+- Motor Noise ('Adapt_Mn')
+
+Joint version of ADAM includes estimates of: 
+- Period correction ('Joint_Beta') 
+- Temporal Prediction ('Joint_Delta') 
+- Anticipatory Error Correction ('Joint_Gamma') 
+- Timekeeper Noise ('Joint_Tn')
+
+Note that the ADAM parameter estimation procedure is run twice per data
+set with TARGET musician (the one for which parameters are being
+estimated) and REFERENCE musician (the one for which parameters are NOT
+being estimated) swapped so estimates are given for each musician.
+
+### Set directory where to read and write files
+
+```{r}
+setwd("C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis") # NEED TO SET TO CURRENT PATH
+```
+
+### Load libraries
+
+```{r}
+library(bestNormalize)
+library(caret)
+library(dplyr)
+library(emmeans)
+library(flextable)
+library(ggeffects)
+library(ggplot2)
+library(ggpp) # for jitternudge [not currently used]
+library(ggpubr)
+library(ggsci) # For Raincloud plots
+library(grid)
+library(gridExtra)
+library(gtools)
+library(huxtable)
+library(broom.mixed)
+library(lme4) # For lmer
+library(lmerTest) # Alternative for lmer that gives p-values/asterisks. Automatically updates output of lmer (just load here, no need to call below) 
+library(reshape2)
+library(rstatix)
+library(stats) # For confint
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library(CRSSIO) # This has additional custom editing features for boxplot
+```
+
+## Log-Likelihood estimates ----
+
+### Plot boxplot
+
+```{r}
+lle_data_pairs <- all_data_pairs
+lle_data_pairs <- lle_data_pairs %>%
+  mutate(Musicians_Present = case_when(
+    (MusicianA == 1 & MusicianB == 2) ~ "12",
+    (MusicianA == 1 & MusicianB == 3) ~ "13",
+    (MusicianA == 2 & MusicianB == 3) ~ "23",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(Musicians_Present))
+
+# Now melt the summarized data
+lle_adam_pairs <- melt(lle_data_pairs, id.vars = c('Song', 'Artist', 'MusicianA', 'MusicianB', 'Musicians_Present'), 
+                     measure.vars = c('Adapt_LLE', 'Joint_LLE'), 
+                     variable.name = 'Model_Version', value.name = "LLE")
+```
+
+```{r}
+lle_data_group <- all_data_group
+
+# Now melt the summarized data
+lle_data_group <- melt(lle_data_group, id.vars = c('Song', 'Artist'), 
+                     measure.vars = c('Adapt_LLE', 'Joint_LLE'), 
+                     variable.name = 'Model_Version', value.name = "LLE")
+```
+
+
+```{r}
+library(dplyr)
+library(officer)
+library(flextable)
+
+# Define the filter threshold
+threshold <- -750
+
+# Count excluded values
+excluded_counts <- lle_adam_pairs %>%
+  filter(LLE <= threshold) %>%  # Excluded values
+  count(Musicians_Present) %>%
+  rename(`Musicians Present` = Musicians_Present, `Excluded Count` = n)
+
+# Print excluded counts
+print(excluded_counts)
+
+# Now filter the data to keep only values with LLE > threshold
+lle_filtered <- lle_adam_pairs %>%
+  filter(LLE > threshold) %>%  # Keep only values above threshold
+  mutate(Musicians_Present = factor(Musicians_Present, levels = c("12", "13", "23")))
+
+# Convert to flextable and save in Word document
+doc <- read_docx() %>%
+  body_add_par("Number of Excluded Observations by Musicians Present", style = "heading 1") %>%
+  body_add_flextable(flextable(excluded_counts))
+
+# Save document
+print(doc, target = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 5/Results/LLE_counts.docx")
+
+# Count excluded values per group
+excluded_counts <- lle_data_group %>%
+  filter(LLE <= threshold) %>%  # This is the *excluded* part
+  summarise(Excluded_Count = n())  # This counts how many rows are excluded
+
+# Print to console (optional)
+print(excluded_counts)
+
+# Now filter the data to keep only values with LLE > threshold
+llegroup_filtered <- lle_data_group %>%
+  filter(LLE > threshold)  # Keep only values above threshold
+
+# Convert to flextable and save in Word document
+doc <- read_docx() %>%
+  body_add_par("Number of Excluded Observations by Musicians Present", style = "heading 1") %>%
+  body_add_flextable(flextable(excluded_counts))
+
+# Save document
+print(doc, target = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 5/Results/GroupLLE_counts.docx")
+```
+
+
+```{r}
+LLE_ADAM_boxplot <- lle_filtered %>%
+  mutate(Musicians_Present = factor(Musicians_Present, levels = c("12", "13", "23"))) %>%
+  ggplot(aes(x = Musicians_Present, y = LLE, fill = Model_Version)) + 
+  stat_boxplot_custom(aes(fill = Model_Version), qs = c(.05, .25, .5, .75, .95), outlier.shape = NA) +
+  geom_jitter(aes(fill = Model_Version), 
+              stat = "identity", show.legend = FALSE,
+              position = position_jitterdodge(0.3), shape = 21, size = 3, color = "black", alpha = 0.5) +
+  scale_fill_manual(name = "Model Version", labels = c('Adaptation Only', 'Full ADAM'), values = c('orange', 'royalblue')) +
+  #coord_cartesian(ylim = c(-400, -300)) +  # Adjusted limits based on your LLE data
+  labs(x = "Musicians Present", y = "Log Likelihood", fill = 'Model_Version') +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = NA, color = "black", size = 1),
+        panel.grid.major = element_blank(),
+        axis.title = element_text(size = 24),
+        axis.title.y = element_text(margin = margin(r = 6)),
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.text = element_text(size = 20, color = "black"),
+        legend.title = element_text(size = 24),
+        legend.text = element_text(size = 20),
+        legend.position = "none",
+        legend.justification = "center",
+        legend.box.margin = margin(0, 10, 0, 0))
+
+LLE_ADAM_boxplot
+```
+
+
+```{r}
+LLE_GroupADAM_boxplot <- llegroup_filtered %>%
+  ggplot(aes(x = Model_Version, y = LLE, fill = Model_Version)) + 
+  stat_boxplot_custom(aes(fill = Model_Version), qs = c(.05, .25, .5, .75, .95), outlier.shape = NA) +
+  geom_jitter(aes(fill = Model_Version), 
+              stat = "identity", show.legend = FALSE,
+              position = position_jitterdodge(0.3), shape = 21, size = 3, color = "black", alpha = 0.5) +
+  scale_fill_manual(name = "Model Version", labels = c('Adaptation Only', 'Full ADAM'), values = c('orange', 'royalblue')) +
+  #coord_cartesian(ylim = c(-400, -300)) +  # Adjusted limits based on your LLE data
+  labs(x = "Model Version", y = "Log Likelihood", fill = 'Model_Version') +
+  theme_classic() +
+  theme(panel.background = element_rect(fill = NA, color = "black", size = 1),
+        panel.grid.major = element_blank(),
+        axis.title = element_text(size = 24),
+        axis.title.y = element_text(margin = margin(r = 6)),
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.text = element_text(size = 20, color = "black"),
+        legend.title = element_text(size = 24),
+        legend.text = element_text(size = 20),
+        legend.position = "right",
+        legend.justification = "center",
+        legend.box.margin = margin(0, 10, 0, 0))
+
+LLE_GroupADAM_boxplot
+
+LLE_ADAM_boxplot_combined <- ggarrange(LLE_ADAM_boxplot, LLE_GroupADAM_boxplot,  
+                                      labels = c("Pair-Wise", "Group-Wise"),
+                                      label.x = c(.04, -.001),
+                                      label.y = c(1.07, 1.07),
+                                      font.label=list(color="black",size=26),
+                                      ncol = 2, nrow = 1
+)
+LLE_ADAM_boxplot_combined
+LLE_ADAM_boxplot_combined <- LLE_ADAM_boxplot_combined %>% annotate_figure(top = text_grob("Log-Likelihood Estimates
+                                                                                           ", color = "Black", face = "bold", size = 36))
+LLE_ADAM_boxplot_combined
+```
+```{r}
+# Check for normality (for full data set, not averaged for trials within pairs)
+all_data_lle <- melt(all_data, id.vars = c('Song', 'Artist', 'N_Events', 'Pair_Label', 'IOI_Entropy_z', 'Tempo_z'), 
+                     measure.vars = c('Adapt_LLE', 'Joint_LLE'), 
+                     variable.name = 'Model_Version', value.name = "LLE")
+
+all_data_lle <- all_data_lle %>%
+  group_by(Song, Artist, Pair_Label, Model_Version) %>%
+  summarise(across(c(LLE, IOI_Entropy_z, Tempo_z, N_Events), mean, na.rm = TRUE))
+
+ntestLLE <- shapiro.test(all_data_lle$LLE)
+ntestLLE
+bestNormalize(all_data_lle$LLE)
+LLE_ON <- bestNormalize(all_data_lle$LLE)
+all_data_lle$LLE_ON <- predict(LLE_ON, all_data_lle$LLE)
+shapiro.test(all_data_lle$LLE_ON)
+```
+
+
+```{r}
+#Full LMER model
+lle_adam.lmer <- lmer(LLE_ON ~ Model_Version * IOI_Entropy_z * Pair_Label * Tempo_z + (1 | Artist/Song) + (1 | N_Events), data = all_data_lle, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+lle_adam_output <- summary(lle_adam.lmer)
+lle_adam_output
+capture.output(lle_adam_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 5/Results/lle_adam_LMER_output.txt") # Write output to text file
+
+#lle_adam_lmer.ci <- confint(lle_adam.lmer)
+#lle_adam_lmer.ci
+#capture.output(lle_adam_lmer.ci, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script #5/lle_adam_lmer_CI.txt") # Write output to text file
+
+# Reduced LMER model
+lle_adam_reduced.lmer <- lmer(LLE_ON ~ 1 + + (1 | Artist/Song) + (1 | N_Events), data = all_data_lle, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+lle_lmer_output_reduced <- summary(lle_adam_reduced.lmer)
+lle_lmer_output_reduced
+capture.output(lle_lmer_output_reduced, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 5/lle_lmer_reduced_LMER_output.txt") # Write output to text file
+
+# Compare the full and reduced models
+lle_lmer_comparison <- anova(lle_adam.lmer, lle_adam_reduced.lmer)
+lle_lmer_comparison
+capture.output(lle_lmer_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 5/lle_LMER_comparison_output.txt") # Write output to text file
+
+# Make output table
+lle_adam.table <- huxreg(lle_adam.lmer, lle_adam_reduced.lmer, statistics = NULL, number_format = 2)
+lle_adam.table
+huxtable::quick_docx(lle_adam.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 5/lle_adam_table.docx") # Make Word table (not standardized coefficients)
+```

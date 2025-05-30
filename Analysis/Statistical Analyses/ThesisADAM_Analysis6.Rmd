@@ -1,0 +1,457 @@
+---
+title: "Thesis ADAM Analysis 6"
+output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# ADAM Parameters Predict Asynchrony
+
+ADAM model parameter estimates were computed in Matlab script:
+
+ThesisADAM_boundedresults.m Output is one file which includes participant and condition identifiers, a
+range of performance measures, and parameter estimates for the
+'Adaptation-only' and 'Full' versions of ADAM. Log-likelihood estimates
+are also included for each model version, indicating quality of model
+fit to data (higher values [less -vs/more +ve] mean better fit)
+
+Adaptation-only version includes estimates of: 
+- Phase Correction ('Adapt_Alpha') 
+- Period Correction ('Adapt_Beta') 
+- Timekeeper Noise ('Adapt_Tn') 
+- Motor Noise ('Adapt_Mn')
+
+Joint version of ADAM includes estimates of: 
+- Period correction ('Joint_Beta') 
+- Temporal Prediction ('Joint_Delta') 
+- Anticipatory Error Correction ('Joint_Gamma') 
+- Timekeeper Noise ('Joint_Tn')
+
+Note that the ADAM parameter estimation procedure is run twice per data
+set with TARGET musician (the one for which parameters are being
+estimated) and REFERENCE musician (the one for which parameters are NOT
+being estimated) swapped so estimates are given for each musician.
+
+### Set directory where to read and write files
+
+```{r}
+setwd("C:/Users/marc1/OneDrive/Desktop/Research/Aarhus University/Keller Work/Piano Duos") # NEED TO SET TO CURRENT PATH
+```
+
+### Load libraries
+
+```{r}
+library(bestNormalize)
+library(caret)
+library(dplyr)
+library(emmeans)
+library(flextable)
+library(ggeffects)
+library(ggplot2)
+library(ggpp) # for jitternudge [not currently used]
+library(ggpubr)
+library(ggsci) # For Raincloud plots
+library(grid)
+library(gridExtra)
+library(gtools)
+library(huxtable)
+library(broom.mixed)
+library(lme4) # For lmer
+library(lmerTest) # Alternative for lmer that gives p-values/asterisks. Automatically updates output of lmer (just load here, no need to call below) 
+library(reshape2)
+library(rstatix)
+library(stats) # For confint
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library(CRSSIO) # This has additional custom editing features for boxplot
+```
+
+```{r}
+# ADAPTATION-ONLY ADAM
+# Adapt Main LMER model predicting Asynchrony
+Adapt.lmer <- lmer(DV_Async_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z * (Adapt_Alpha_ON + Adapt_Beta_ON + Adapt_Tn_ON + Adapt_Mn_ON) + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt.lmer_output <- summary(Adapt.lmer)
+Adapt.lmer_output
+capture.output(Adapt.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Adapt_Param_LMER_output.txt") # Write output to text file
+
+# Random Effects LMER model
+Adapt_random.lmer <- lmer(DV_Async_ON ~ 1 +  (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_random.lmer_output <- summary(Adapt_random.lmer)
+Adapt_random.lmer_output
+capture.output(Adapt_random.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Adapt_Param_random_LMER_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_models_comparison <- anova(Adapt.lmer, Adapt_random.lmer)
+Adapt_models_comparison
+capture.output(Adapt_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Adapt_Param_comparison.txt") # Write output to text file
+
+Adapt.table <- huxreg(Adapt.lmer, Adapt_random.lmer, statistics = NULL, number_format = 3)
+Adapt.table
+huxtable::quick_docx(Adapt.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Adapt_Param_table.docx") # Make Word table (not standardized coefficients)
+
+# JOINT ADAM
+# Joint Main LMER model predicting Asynchrony (NB: Runs into convergence and singularity issues if Condition*Tn interaction is included)
+Joint.lmer <- lmer(DV_Async_ON ~ IOI_Entropy_z * Pair_Label * Tempo_z * (Joint_Beta_ON + Joint_Delta_ON + Joint_Gamma_ON + Joint_Tn_ON) + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint.lmer_output <- summary(Joint.lmer)
+Joint.lmer_output
+capture.output(Joint.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Joint_Param_LMER_output.txt") # Write output to text file
+
+# Random Effects LMER model
+Joint_random.lmer <- lmer(DV_Async_ON ~ 1 + (1 | Artist/Song) + (1 | N_Events), data = all_data, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_random.lmer_output <- summary(Joint_random.lmer)
+Joint_random.lmer_output
+capture.output(Joint_random.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Joint_Param_random_LMER_output") # Write output to text file
+
+# Compare full and reduced models 
+Joint_models_comparison <- anova(Joint.lmer, Joint_random.lmer)
+Joint_models_comparison
+capture.output(Joint_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Joint_Param_comparison.txt") # Write output to text file
+
+
+Joint.table <- huxreg(Joint.lmer, Joint_random.lmer, statistics = NULL, number_format = 3)
+Joint.table
+huxtable::quick_docx(Joint.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Joint_Param_table.docx") # Make Word table (not standardized coefficients)
+```
+
+## Plots of ADAM parameters predicting Asynchrony
+
+```{r}
+indiv_adam_adapt_alpha_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Alpha_ON"))
+indiv_adam_adapt_alpha_tran.plot <- plot(indiv_adam_adapt_alpha_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL, colors = "red") +
+  labs(x= "Phase Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) 
+  scale_color_manual(values = c("red")) +
+  scale_fill_manual(values = c("red")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_alpha_tran.plot$layers)) {
+  indiv_adam_adapt_alpha_tran.plot$layers[[i]]$aes_params$colour <- "red"
+  indiv_adam_adapt_alpha_tran.plot$layers[[i]]$aes_params$fill <- "red"
+}
+indiv_adam_adapt_alpha_tran.plot
+
+indiv_adam_adapt_beta_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Beta_ON"))
+indiv_adam_adapt_beta_tran.plot <- plot(indiv_adam_adapt_beta_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL, colors = 'darkorange') +
+  labs(x= "Period Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkorange","darkorange")) +
+  scale_fill_manual(values= c("darkorange","darkorange")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_beta_tran.plot$layers)) {
+  indiv_adam_adapt_beta_tran.plot$layers[[i]]$aes_params$colour <- "darkorange"
+  indiv_adam_adapt_beta_tran.plot$layers[[i]]$aes_params$fill <- "darkorange"
+}
+indiv_adam_adapt_beta_tran.plot
+
+indiv_adam_adapt_Tn_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Tn_ON"))
+indiv_adam_adapt_Tn_tran.plot <- plot(indiv_adam_adapt_Tn_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL, colors = 'black') +
+  labs(x= "Timekeeper Noise Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("black","black")) +
+  scale_fill_manual(values= c("black","black")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_Tn_tran.plot$layers)) {
+  indiv_adam_adapt_Tn_tran.plot$layers[[i]]$aes_params$colour <- "black"
+  indiv_adam_adapt_Tn_tran.plot$layers[[i]]$aes_params$fill <- "black"
+}
+indiv_adam_adapt_Tn_tran.plot
+
+indiv_adam_adapt_Mn_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Mn_ON"))
+indiv_adam_adapt_Mn_tran.plot <- plot(indiv_adam_adapt_Mn_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Motor Noise Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkgrey","darkgrey")) +
+  scale_fill_manual(values= c("darkgrey","darkgrey")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_Mn_tran.plot$layers)) {
+  indiv_adam_adapt_Mn_tran.plot$layers[[i]]$aes_params$colour <- "darkgrey"
+  indiv_adam_adapt_Mn_tran.plot$layers[[i]]$aes_params$fill <- "darkgrey"
+}
+indiv_adam_adapt_Mn_tran.plot
+
+# Combined plot
+
+# Adaptation only plot
+Adapt_Effect_plot <- ggarrange(indiv_adam_adapt_alpha_tran.plot, indiv_adam_adapt_beta_tran.plot, 
+                               indiv_adam_adapt_Tn_tran.plot, indiv_adam_adapt_Mn_tran.plot,  
+                                 #labels = c("A", "B", "C", "D"),
+                                 label.x = c(-.001, -.001, -.001, -.001),
+                                 label.y = c(1.09, 1.09, 1.09, 1.09),
+                                 font.label=list(color="black",size=24),
+                                 ncol = 1, nrow = 4
+)
+Adapt_Effect_plot
+Adapt_Effect_plot <- Adapt_Effect_plot %>% annotate_figure(top = text_grob("Combined", color = "Black", face = "bold", size = 24))
+Adapt_Effect_plot
+```
+
+```{r}
+# Full ADAM
+indiv_adam_full_beta_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Beta_ON"))
+indiv_adam_full_beta_tran.plot <- plot(indiv_adam_full_beta_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Period Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkorange","darkorange")) +
+  scale_fill_manual(values= c("darkorange","darkorange")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_beta_tran.plot$layers)) {
+  indiv_adam_full_beta_tran.plot$layers[[i]]$aes_params$colour <- "darkorange"
+  indiv_adam_full_beta_tran.plot$layers[[i]]$aes_params$fill <- "darkorange"
+}
+indiv_adam_full_beta_tran.plot
+
+indiv_adam_full_delta_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Delta_ON"))
+indiv_adam_full_delta_tran.plot <- plot(indiv_adam_full_delta_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Temporal Prediction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("blue","blue")) +
+  scale_fill_manual(values= c("blue","blue")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_delta_tran.plot$layers)) {
+  indiv_adam_full_delta_tran.plot$layers[[i]]$aes_params$colour <- "blue"
+  indiv_adam_full_delta_tran.plot$layers[[i]]$aes_params$fill <- "blue"
+}
+indiv_adam_full_delta_tran.plot
+
+indiv_adam_full_gamma_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Gamma_ON"))
+indiv_adam_full_gamma_tran.plot <- plot(indiv_adam_full_gamma_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Anticipatory Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkgreen","darkgreen")) +
+  scale_fill_manual(values= c("darkgreen","darkgreen")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_gamma_tran.plot$layers)) {
+  indiv_adam_full_gamma_tran.plot$layers[[i]]$aes_params$colour <- "darkgreen"
+  indiv_adam_full_gamma_tran.plot$layers[[i]]$aes_params$fill <- "darkgreen"
+}
+indiv_adam_full_gamma_tran.plot
+
+indiv_adam_full_Tn_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Tn_ON"))
+indiv_adam_full_Tn_tran.plot <- plot(indiv_adam_full_Tn_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Timekeeper Noise Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("black","black")) +
+  scale_fill_manual(values= c("black","black")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_Tn_tran.plot$layers)) {
+  indiv_adam_full_Tn_tran.plot$layers[[i]]$aes_params$colour <- "black"
+  indiv_adam_full_Tn_tran.plot$layers[[i]]$aes_params$fill <- "black"
+}
+indiv_adam_full_Tn_tran.plot
+
+# Combined plot
+# Full ADAM plot
+Joint_Effect_plot <- ggarrange(indiv_adam_full_beta_tran.plot, indiv_adam_full_delta_tran.plot, 
+                               indiv_adam_full_gamma_tran.plot, indiv_adam_full_Tn_tran.plot,
+                                #labels = c("E", "F", "G", "H"),
+                                label.x = c(-.001, -.001, -.001, -.001),
+                                label.y = c(1.09, 1.09, 1.09, 1.09),
+                                font.label=list(color="black",size=24),
+                                ncol = 1, nrow = 4)
+Joint_Effect_plot
+Joint_Effect_plot <- Joint_Effect_plot %>% annotate_figure(top = text_grob("Combined", color = "Black", face = "bold", size = 24))
+Joint_Effect_plot
+```
+#___________________________GROUP LEVEL____________________________________________________
+```{r}
+# ADAPTATION-ONLY ADAM
+# Adapt Main LMER model predicting Asynchrony
+Adapt.lmer <- lmer(Group_Async_ON ~ IOI_Entropy_Global_z * Tempo_z * (Adapt_Alpha_ON + Adapt_Beta_ON + Adapt_Tn_ON + Adapt_Mn_ON) + (1 | Artist) + (1 | Song) + (1 | N_Events), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt.lmer_output <- summary(Adapt.lmer)
+Adapt.lmer_output
+capture.output(Adapt.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Adapt_Param_LMER_output.txt") # Write output to text file
+
+# Random Effects LMER model
+Adapt_random.lmer <- lmer(Group_Async_ON ~ 1 + (1 | Artist) + (1 | Song) + (1 | N_Events), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Adapt_random.lmer_output <- summary(Adapt_random.lmer)
+Adapt_random.lmer_output
+capture.output(Adapt_random.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Adapt_Param_random_LMER_output.txt") # Write output to text file
+
+# Compare full and reduced models 
+Adapt_models_comparison <- anova(Adapt.lmer, Adapt_random.lmer)
+Adapt_models_comparison
+capture.output(Adapt_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Adapt_Param_comparison.txt") # Write output to text file
+
+Adapt.table <- huxreg(Adapt.lmer, Adapt_random.lmer, statistics = NULL, number_format = 3)
+Adapt.table
+huxtable::quick_docx(Adapt.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Adapt_Param_table.docx") # Make Word table (not standardized coefficients)
+
+# JOINT ADAM
+# Joint Main LMER model predicting Asynchrony (NB: Runs into convergence and singularity issues if Condition*Tn interaction is included)
+Joint.lmer <- lmer(Group_Async_ON ~ IOI_Entropy_Global_z * Tempo_z * (Joint_Beta_ON + Joint_Delta_ON + Joint_Gamma_ON + Joint_Tn_ON) + (1 | Artist) + (1 | Song) + (1 | N_Events), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint.lmer_output <- summary(Joint.lmer)
+Joint.lmer_output
+capture.output(Joint.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Joint_Param_LMER_output.txt") # Write output to text file
+
+# Random Effects LMER model
+Joint_random.lmer <- lmer(Group_Async_ON ~ 1 + (1 | Artist) + (1 | Song) + (1 | N_Events), data = all_data_group, control = lmerControl(optimizer = "bobyqa"), REML = FALSE)
+Joint_random.lmer_output <- summary(Joint_random.lmer)
+Joint_random.lmer_output
+capture.output(Joint_random.lmer_output, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Joint_Param_random_LMER_output") # Write output to text file
+
+# Compare full and reduced models 
+Joint_models_comparison <- anova(Joint.lmer, Joint_random.lmer)
+Joint_models_comparison
+capture.output(Joint_models_comparison, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Joint_Param_comparison.txt") # Write output to text file
+
+
+Joint.table <- huxreg(Joint.lmer, Joint_random.lmer, statistics = NULL, number_format = 3)
+Joint.table
+huxtable::quick_docx(Joint.table, file = "C:/Users/marc1/OneDrive/Desktop/School/Aarhus University/Current Classes/Thesis/Analysis/Outputs/Script 6/Group_Joint_Param_table.docx") # Make Word table (not standardized coefficients)
+```
+
+## Plots of ADAM parameters predicting Asynchrony
+
+```{r}
+indiv_adam_adapt_alpha_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Alpha_ON"))
+indiv_adam_adapt_alpha_tran.plot <- plot(indiv_adam_adapt_alpha_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL, colors = "red") +
+  labs(x= "Phase Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) 
+  scale_color_manual(values = c("red")) +
+  scale_fill_manual(values = c("red")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_alpha_tran.plot$layers)) {
+  indiv_adam_adapt_alpha_tran.plot$layers[[i]]$aes_params$colour <- "red"
+  indiv_adam_adapt_alpha_tran.plot$layers[[i]]$aes_params$fill <- "red"
+}
+indiv_adam_adapt_alpha_tran.plot
+
+indiv_adam_adapt_beta_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Beta_ON"))
+indiv_adam_adapt_beta_tran.plot <- plot(indiv_adam_adapt_beta_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL, colors = 'darkorange') +
+  labs(x= "Period Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkorange","darkorange")) +
+  scale_fill_manual(values= c("darkorange","darkorange")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_beta_tran.plot$layers)) {
+  indiv_adam_adapt_beta_tran.plot$layers[[i]]$aes_params$colour <- "darkorange"
+  indiv_adam_adapt_beta_tran.plot$layers[[i]]$aes_params$fill <- "darkorange"
+}
+indiv_adam_adapt_beta_tran.plot
+
+indiv_adam_adapt_Tn_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Tn_ON"))
+indiv_adam_adapt_Tn_tran.plot <- plot(indiv_adam_adapt_Tn_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL, colors = 'black') +
+  labs(x= "Timekeeper Noise Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("black","black")) +
+  scale_fill_manual(values= c("black","black")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_Tn_tran.plot$layers)) {
+  indiv_adam_adapt_Tn_tran.plot$layers[[i]]$aes_params$colour <- "black"
+  indiv_adam_adapt_Tn_tran.plot$layers[[i]]$aes_params$fill <- "black"
+}
+indiv_adam_adapt_Tn_tran.plot
+
+indiv_adam_adapt_Mn_tran.effects <- ggemmeans(Adapt.lmer, c("Adapt_Mn_ON"))
+indiv_adam_adapt_Mn_tran.plot <- plot(indiv_adam_adapt_Mn_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Motor Noise Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkgrey","darkgrey")) +
+  scale_fill_manual(values= c("darkgrey","darkgrey")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_adapt_Mn_tran.plot$layers)) {
+  indiv_adam_adapt_Mn_tran.plot$layers[[i]]$aes_params$colour <- "darkgrey"
+  indiv_adam_adapt_Mn_tran.plot$layers[[i]]$aes_params$fill <- "darkgrey"
+}
+indiv_adam_adapt_Mn_tran.plot
+
+# Combined plot
+
+# Adaptation only plot
+Adapt_Effect_plot <- ggarrange(indiv_adam_adapt_alpha_tran.plot, indiv_adam_adapt_beta_tran.plot, 
+                               indiv_adam_adapt_Tn_tran.plot, indiv_adam_adapt_Mn_tran.plot,  
+                                 #labels = c("A", "B", "C", "D"),
+                                 label.x = c(-.001, -.001, -.001, -.001),
+                                 label.y = c(1.09, 1.09, 1.09, 1.09),
+                                 font.label=list(color="black",size=24),
+                                 ncol = 1, nrow = 4
+)
+Adapt_Effect_plot
+Adapt_Effect_plot <- Adapt_Effect_plot %>% annotate_figure(top = text_grob("Combined", color = "Black", face = "bold", size = 24))
+Adapt_Effect_plot
+```
+
+```{r}
+# Full ADAM
+indiv_adam_full_beta_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Beta_ON"))
+indiv_adam_full_beta_tran.plot <- plot(indiv_adam_full_beta_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Period Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkorange","darkorange")) +
+  scale_fill_manual(values= c("darkorange","darkorange")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_beta_tran.plot$layers)) {
+  indiv_adam_full_beta_tran.plot$layers[[i]]$aes_params$colour <- "darkorange"
+  indiv_adam_full_beta_tran.plot$layers[[i]]$aes_params$fill <- "darkorange"
+}
+indiv_adam_full_beta_tran.plot
+
+indiv_adam_full_delta_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Delta_ON"))
+indiv_adam_full_delta_tran.plot <- plot(indiv_adam_full_delta_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Temporal Prediction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("blue","blue")) +
+  scale_fill_manual(values= c("blue","blue")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_delta_tran.plot$layers)) {
+  indiv_adam_full_delta_tran.plot$layers[[i]]$aes_params$colour <- "blue"
+  indiv_adam_full_delta_tran.plot$layers[[i]]$aes_params$fill <- "blue"
+}
+indiv_adam_full_delta_tran.plot
+
+indiv_adam_full_gamma_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Gamma_ON"))
+indiv_adam_full_gamma_tran.plot <- plot(indiv_adam_full_gamma_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Anticipatory Correction Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("darkgreen","darkgreen")) +
+  scale_fill_manual(values= c("darkgreen","darkgreen")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_gamma_tran.plot$layers)) {
+  indiv_adam_full_gamma_tran.plot$layers[[i]]$aes_params$colour <- "darkgreen"
+  indiv_adam_full_gamma_tran.plot$layers[[i]]$aes_params$fill <- "darkgreen"
+}
+indiv_adam_full_gamma_tran.plot
+
+indiv_adam_full_Tn_tran.effects <- ggemmeans(Joint.lmer, c("Joint_Tn_ON"))
+indiv_adam_full_Tn_tran.plot <- plot(indiv_adam_full_Tn_tran.effects, show_residuals = TRUE, alpha = .2, dot_alpha = .5, dot_size = 2, limit_range = FALSE, jitter = NULL) +
+  labs(x= "Timekeeper Noise Estimate (ON)", y = "Residual Async. (ON)", title = "") +
+  #coord_cartesian(ylim = c(0, 150)) +
+  scale_colour_manual(values = c("black","black")) +
+  scale_fill_manual(values= c("black","black")) +
+  theme_bw() +
+  theme(panel.grid = element_blank())
+for (i in seq_along(indiv_adam_full_Tn_tran.plot$layers)) {
+  indiv_adam_full_Tn_tran.plot$layers[[i]]$aes_params$colour <- "black"
+  indiv_adam_full_Tn_tran.plot$layers[[i]]$aes_params$fill <- "black"
+}
+indiv_adam_full_Tn_tran.plot
+
+# Combined plot
+# Full ADAM plot
+Joint_Effect_plot <- ggarrange(indiv_adam_full_beta_tran.plot, indiv_adam_full_delta_tran.plot, 
+                               indiv_adam_full_gamma_tran.plot, indiv_adam_full_Tn_tran.plot,
+                                #labels = c("E", "F", "G", "H"),
+                                label.x = c(-.001, -.001, -.001, -.001),
+                                label.y = c(1.09, 1.09, 1.09, 1.09),
+                                font.label=list(color="black",size=24),
+                                ncol = 1, nrow = 4)
+Joint_Effect_plot
+Joint_Effect_plot <- Joint_Effect_plot %>% annotate_figure(top = text_grob("Combined", color = "Black", face = "bold", size = 24))
+Joint_Effect_plot
+```
